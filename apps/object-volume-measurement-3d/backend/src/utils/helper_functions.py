@@ -18,8 +18,8 @@ QUANT_VALUES = {
     "yoloe": {
         "quant_zero_point": 174.0,
         "quant_scale": 0.003328413470,
-    }
-} 
+    },
+}
 
 
 def pad_and_quantize_features(features, max_num_classes=80, model_name="yolo-world"):
@@ -39,9 +39,9 @@ def pad_and_quantize_features(features, max_num_classes=80, model_name="yolo-wor
     padded_features = np.pad(
         features, ((0, num_padding), (0, 0)), mode="constant"
     ).T.reshape(1, 512, max_num_classes)
-    #quantized_features = (padded_features / quant_scale) + quant_zero_point
-    #quantized_features = quantized_features.astype("uint8")
-    return padded_features #quantized_features
+    # quantized_features = (padded_features / quant_scale) + quant_zero_point
+    # quantized_features = quantized_features.astype("uint8")
+    return padded_features  # quantized_features
 
 
 def extract_text_embeddings(class_names, max_num_classes=80, model_name="yolo-world"):
@@ -110,8 +110,9 @@ def extract_text_embeddings(class_names, max_num_classes=80, model_name="yolo-wo
             textual_output, ord=2, axis=-1, keepdims=True
         )  # Normalize the output
 
-
-    text_features = pad_and_quantize_features(textual_output, max_num_classes, model_name)
+    text_features = pad_and_quantize_features(
+        textual_output, max_num_classes, model_name
+    )
 
     del session_textual
 
@@ -205,6 +206,7 @@ def base64_to_cv2_image(base64_data_uri: str):
     np_arr = np.frombuffer(binary_data, np.uint8)
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     return img
+
 
 def read_intrinsics(device: dai.Device, width: int, height: int) -> tuple:
     """Reads the camera intrinsics from the device and returns the focal lengths and principal points."""

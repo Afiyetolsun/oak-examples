@@ -1,8 +1,10 @@
 # Extended 3D Measurement
-This example demonstrates a practical approach for measuring objects in 3D using DepthAI.  
+
+This example demonstrates a practical approach for measuring objects in 3D using DepthAI.\
 On the DepthAI backend, it runs **YOLOE** model on-device, with configurable class labels and confidence threshold - both controllable via the frontend.
-The custom frontend lets you click a detected object in the Video stream, the backend then segments that instance, builds a segmented point cloud, and computes dimensions and volume in real time. Users can switch between two measurement methods: Object-Oriented Bounding Box and Ground-plane Height Grid.  
+The custom frontend lets you click a detected object in the Video stream, the backend then segments that instance, builds a segmented point cloud, and computes dimensions and volume in real time. Users can switch between two measurement methods: Object-Oriented Bounding Box and Ground-plane Height Grid.\
 The frontend is built with `@luxonis/depthai-viewer-common` package, and combined with the [default oakapp docker image](https://hub.docker.com/r/luxonis/oakapp-base), enabling remote access via WebRTC.
+
 > **Note:** This example works only on RVC4 in standalone mode.
 
 ## Demo
@@ -28,34 +30,40 @@ Here is a list of all available parameters:
 
 This example currently uses **YOLOE** - a fast and efficient object detection model, that outputs bounding boxes and segmentation masks.
 
-### Measurement methods 
+### Measurement methods
 
 The app provides two ways to measure objects from the segmented point clouds:
+
 #### 1. Object-Oriented Bounding Box (OBB)
-This method uses Open3D's `get_minimal_oriented_bounding_box()`, which computes the minimal 3D box that encloses the segmented point cloud.  
-The resulting box provides the object's dimensions (L, W, H) and the volume is computed as: V = L x W x H   
-Temporal smoothing is applied to keep the box stable and prevents sudden flips. It combines a low pass filter (EMA) for center and size, and spherical linear interpolation (SLERP) for rotations.  
+
+This method uses Open3D's `get_minimal_oriented_bounding_box()`, which computes the minimal 3D box that encloses the segmented point cloud.\
+The resulting box provides the object's dimensions (L, W, H) and the volume is computed as: V = L x W x H\
+Temporal smoothing is applied to keep the box stable and prevents sudden flips. It combines a low pass filter (EMA) for center and size, and spherical linear interpolation (SLERP) for rotations.\
 This method is fast but may overestimate volume for objects with irregular shapes.
+
 #### 2. Ground-plane Height Grid (HG)
-For this method the objects are required to rest on a flat surface (e.g desk or floor). It uses the flat surface as a reference support plane, then estimates the footprint and the height by 
-grid-based slicing of the objects top surface.  
+
+For this method the objects are required to rest on a flat surface (e.g desk or floor). It uses the flat surface as a reference support plane, then estimates the footprint and the height by
+grid-based slicing of the objects top surface.
 
 **How it works:**
-1. Plane capture: we run RANSAC on the scene point cloud and validate with the IMU that the plane is ground-like (plane normal parallel to gravity). 
-	The app shows Calculating / OK / Failed status in the overlay of the Video Stream and re-requests capture if the camera has been moved or plane becomes invalid.
-2. Transform the object point cloud into the ground/table frame.
-3. Compute a minimum-area rectangle for the footprint of the object. From here we get the L, W and yaw (rotation along the z axis).
-4. Volume calculation: the footprint polygon is divided into a 2D grid of square cells (default 5 mm each). For every cell inside the footprint, the algorithm estimates a height value by looking at the object points that fall into that cell. The base area of each cell = (cell size)² and height = cell height above the ground plane.  
-The total object volume is obtained by summing the volumes of each cell across the grid. The object's height H is computed from this height grid also. 
-5. Temporal smoothing is applied to the footprint, yaw, height, and dimensions (EMA-based), with rejection of sudden jumps.  
 
-This grid-integration method makes the volume estimation more robust to irregular and uneven object surfaces compared to just taking the bounding box. However, it is sensitive to plane fitting errors.  
+1. Plane capture: we run RANSAC on the scene point cloud and validate with the IMU that the plane is ground-like (plane normal parallel to gravity).
+   The app shows Calculating / OK / Failed status in the overlay of the Video Stream and re-requests capture if the camera has been moved or plane becomes invalid.
+1. Transform the object point cloud into the ground/table frame.
+1. Compute a minimum-area rectangle for the footprint of the object. From here we get the L, W and yaw (rotation along the z axis).
+1. Volume calculation: the footprint polygon is divided into a 2D grid of square cells (default 5 mm each). For every cell inside the footprint, the algorithm estimates a height value by looking at the object points that fall into that cell. The base area of each cell = (cell size)² and height = cell height above the ground plane.\
+   The total object volume is obtained by summing the volumes of each cell across the grid. The object's height H is computed from this height grid also.
+1. Temporal smoothing is applied to the footprint, yaw, height, and dimensions (EMA-based), with rejection of sudden jumps.
+
+This grid-integration method makes the volume estimation more robust to irregular and uneven object surfaces compared to just taking the bounding box. However, it is sensitive to plane fitting errors.
 
 > **Note:** the object dimensions are still represented as a box, even for irregular objects.
 
 ### Outputs
 
 The backend publishes:
+
 - Video Stream
 - Detections Overlay with segmentation masks and bounding boxes
 - Pointclouds Stream (whole scene and segmented when measuring an object)
