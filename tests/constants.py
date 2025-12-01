@@ -92,6 +92,10 @@ KNOWN_FAILING = {
         "mode": "all",
         "platform": "all",
     },
+    "apps/object-volume-measurement-3d": {
+        "reason": "RVC4 only app",
+        "platform": ["rvc2"],
+    },
 }
 
 IGNORED_WARNINGS = [
