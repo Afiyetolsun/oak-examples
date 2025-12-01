@@ -12,8 +12,6 @@ from depthai_nodes.node.utils import generate_script_content
 from utils.arguments import initialize_argparser
 from utils.annotation_node import AnnotationNode
 
-DET_MODEL = "luxonis/wildlife-megadetector:mdv6-yolov10-c"
-POSE_MODEL = "luxonis/superanimal-landmarker:256x256"
 PADDING = 0.1
 VALID_LABELS = [0]
 
@@ -38,16 +36,16 @@ with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
     # detection model
-    det_model_description = dai.NNModelDescription(DET_MODEL, platform=platform)
-    det_nn_archive = dai.NNArchive(
-        dai.getModelFromZoo(det_model_description, useCached=False)
+    det_model_description = dai.NNModelDescription.fromYamlFile(
+        f"wildlife_megadetector.{platform}.yaml"
     )
+    det_nn_archive = dai.NNArchive(dai.getModelFromZoo(det_model_description))
 
     # pose estimation model
-    pose_model_description = dai.NNModelDescription(POSE_MODEL, platform=platform)
-    pose_nn_archive = dai.NNArchive(
-        dai.getModelFromZoo(pose_model_description, useCached=False)
+    pose_model_description = dai.NNModelDescription.fromYamlFile(
+        f"superanimal_landmarker.{platform}.yaml"
     )
+    pose_nn_archive = dai.NNArchive(dai.getModelFromZoo(pose_model_description))
     pose_model_w, pose_model_h = pose_nn_archive.getInputSize()
 
     # media/camera input
@@ -64,15 +62,18 @@ with dai.Pipeline(device) as pipeline:
         input_node, det_nn_archive, fps=args.fps_limit
     )
 
+    detections_filter = pipeline.create(ImgDetectionsFilter).build(
+        detection_nn.out, labels_to_keep=VALID_LABELS
+    )
+
     # detection processing
     script = pipeline.create(dai.node.Script)
-    detection_nn.out.link(script.inputs["det_in"])
+    detections_filter.out.link(script.inputs["det_in"])
     detection_nn.passthrough.link(script.inputs["preview"])
     script_content = generate_script_content(
         resize_width=pose_model_w,
         resize_height=pose_model_h,
         padding=PADDING,
-        valid_labels=VALID_LABELS,
         resize_mode="STRETCH",
     )
     script.setScript(script_content)
@@ -86,10 +87,6 @@ with dai.Pipeline(device) as pipeline:
 
     pose_nn: ParsingNeuralNetwork = pipeline.create(ParsingNeuralNetwork).build(
         pose_manip.out, pose_nn_archive
-    )
-
-    detections_filter = pipeline.create(ImgDetectionsFilter).build(
-        detection_nn.out, labels_to_keep=VALID_LABELS
     )
 
     detections_bridge = pipeline.create(ImgDetectionsBridge).build(

@@ -9,8 +9,6 @@ from utils.process import ProcessDetections
 
 _, args = initialize_argparser()
 
-DET_MODEL: str = "luxonis/mediapipe-palm-detection:192x192"
-POSE_MODEL: str = "luxonis/mediapipe-hand-landmarker:224x224"
 PADDING = 0.1
 CONFIDENCE_THRESHOLD = 0.5
 
@@ -33,13 +31,15 @@ with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
     # detection model
-    det_model_description = dai.NNModelDescription(DET_MODEL)
-    det_model_description.platform = platform
+    det_model_description = dai.NNModelDescription.fromYamlFile(
+        f"mediapipe_palm_detection.{platform}.yaml"
+    )
     det_nn_archive = dai.NNArchive(dai.getModelFromZoo(det_model_description))
 
     # pose estimation model
-    pose_model_description = dai.NNModelDescription(POSE_MODEL)
-    pose_model_description.platform = platform
+    pose_model_description = dai.NNModelDescription.fromYamlFile(
+        f"mediapipe_hand_landmarker.{platform}.yaml"
+    )
     pose_nn_archive = dai.NNArchive(dai.getModelFromZoo(pose_model_description))
 
     # media/camera input
@@ -124,8 +124,22 @@ with dai.Pipeline(device) as pipeline:
         connections_pairs=connection_pairs,
     )
 
+    # video encoding
+    video_encode_manip = pipeline.create(dai.node.ImageManip)
+    video_encode_manip.setMaxOutputFrameSize(768 * 768 * 3)
+    video_encode_manip.initialConfig.setOutputSize(768, 768)
+    video_encode_manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
+    input_node.link(video_encode_manip.inputImage)
+
+    video_encoder = pipeline.create(dai.node.VideoEncoder)
+    video_encoder.setMaxOutputFrameSize(768 * 768 * 3)
+    video_encoder.setDefaultProfilePreset(
+        args.fps_limit, dai.VideoEncoderProperties.Profile.H264_MAIN
+    )
+    video_encode_manip.out.link(video_encoder.input)
+
     # visualization
-    visualizer.addTopic("Video", input_node, "images")
+    visualizer.addTopic("Video", video_encoder.out, "images")
     visualizer.addTopic("Detections", annotation_node.out_detections, "images")
     visualizer.addTopic("Pose", annotation_node.out_pose_annotations, "images")
 

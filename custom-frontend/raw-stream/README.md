@@ -1,6 +1,6 @@
 # Raw Stream
 
-This example project demonstrates how to use the `@luxonis/depthai-viewer-common` package to build a simple custom frontend application for DepthAIv3. It showcases how to stream data to a custom UI that includes a text input, allowing two-way communication between the frontend and the backend application. It uses a simple internal Python-based web server. For scenarios involving remote access via WebRTC and support for stream encoding, which requires HTTPS access, it is recommended to use the advanced example [dynamic-yolo-world](../dynamic-yolo-world/README.md).
+This example project demonstrates how to use the `@luxonis/depthai-viewer-common` package to build a simple custom frontend application for DepthAIv3. It showcases how to stream data to a custom UI that includes a text input, allowing two-way communication between the frontend and the backend application. It uses a simple internal Python-based web server. For scenarios involving remote access via WebRTC and support for stream encoding, which requires HTTPS access, it is recommended to use the advanced example [open-vocabulary-object-detection](../open-vocabulary-object-detection/README.md).
 
 ## Demo
 
@@ -22,12 +22,6 @@ Here is a list of all available parameters:
 -ip IP, --ip IP       IP address to serve the frontend on. (default: None)
 -p PORT, --port PORT  Port to serve the frontend on. (default: None)
 ```
-
-Before running the example in either mode, you’ll need to first build the frontend. Follow these steps:
-
-1. Install FE dependencies: `cd frontend/ && npm i`
-1. Build the FE: `npm run build`
-1. Move back to origin directory: `cd ..`
 
 ## Peripheral Mode
 

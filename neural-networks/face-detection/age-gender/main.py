@@ -7,7 +7,6 @@ from depthai_nodes.node.utils import generate_script_content
 from utils.arguments import initialize_argparser
 from utils.annotation_node import AnnotationNode
 
-REC_MODEL = "luxonis/age-gender-recognition:62x62"
 REQ_WIDTH, REQ_HEIGHT = (
     1024,
     768,
@@ -19,7 +18,6 @@ visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device(dai.DeviceInfo(args.device)) if args.device else dai.Device()
 platform = device.getPlatform().name
 print(f"Platform: {platform}")
-DET_MODEL = "luxonis/yunet:640x480" if platform == "RVC4" else "luxonis/yunet:320x240"
 
 frame_type = (
     dai.ImgFrame.Type.BGR888i if platform == "RVC4" else dai.ImgFrame.Type.BGR888p
@@ -35,17 +33,17 @@ with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
     # face detection model
-    det_model_description = dai.NNModelDescription(DET_MODEL, platform=platform)
-    det_model_nn_archive = dai.NNArchive(
-        dai.getModelFromZoo(det_model_description, useCached=False)
+    det_model_description = dai.NNModelDescription.fromYamlFile(
+        f"yunet.{platform}.yaml"
     )
+    det_model_nn_archive = dai.NNArchive(dai.getModelFromZoo(det_model_description))
     det_model_w, det_model_h = det_model_nn_archive.getInputSize()
 
     # age-gender recognition model
-    rec_model_description = dai.NNModelDescription(REC_MODEL, platform=platform)
-    rec_model_nn_archive = dai.NNArchive(
-        dai.getModelFromZoo(rec_model_description, useCached=False)
+    rec_model_description = dai.NNModelDescription.fromYamlFile(
+        f"age_gender_recognition.{platform}.yaml"
     )
+    rec_model_nn_archive = dai.NNArchive(dai.getModelFromZoo(rec_model_description))
 
     # media/camera input
     if args.media_path:
@@ -73,6 +71,7 @@ with dai.Pipeline(device) as pipeline:
     det_nn: ParsingNeuralNetwork = pipeline.create(ParsingNeuralNetwork).build(
         resize_node.out, det_model_nn_archive
     )
+    det_nn.getParser(0).conf_threshold = 0.9  # for more stable detections
 
     # detection processing
     det_bridge = pipeline.create(ImgDetectionsBridge).build(
@@ -108,8 +107,22 @@ with dai.Pipeline(device) as pipeline:
     # annotation
     annotation_node = pipeline.create(AnnotationNode).build(gather_data_node.out)
 
+    # video encoding
+    video_encode_manip = pipeline.create(dai.node.ImageManip)
+    video_encode_manip.setMaxOutputFrameSize(REQ_WIDTH * REQ_HEIGHT * 3)
+    video_encode_manip.initialConfig.setOutputSize(REQ_WIDTH, REQ_HEIGHT)
+    video_encode_manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
+    input_node_out.link(video_encode_manip.inputImage)
+
+    video_encoder = pipeline.create(dai.node.VideoEncoder)
+    video_encoder.setMaxOutputFrameSize(REQ_WIDTH * REQ_HEIGHT * 3)
+    video_encoder.setDefaultProfilePreset(
+        args.fps_limit, dai.VideoEncoderProperties.Profile.H264_MAIN
+    )
+    video_encode_manip.out.link(video_encoder.input)
+
     # visualization
-    visualizer.addTopic("Video", input_node_out, "images")
+    visualizer.addTopic("Video", video_encoder.out, "images")
     visualizer.addTopic("AgeGender", annotation_node.out, "images")
 
     print("Pipeline created.")

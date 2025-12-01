@@ -5,7 +5,6 @@ from depthai_nodes.node import ParsingNeuralNetwork
 from utils.arguments import initialize_argparser
 from utils.crop_face import CropFace
 
-DET_MODEL = "luxonis/yunet:320x240"
 REQ_WIDTH = 3840
 REQ_HEIGHT = 2880
 
@@ -13,18 +12,20 @@ _, args = initialize_argparser()
 
 visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device(dai.DeviceInfo(args.device)) if args.device else dai.Device()
-platform = device.getPlatformAsString()
-print(f"Platform: {platform}")
+platform = device.getPlatform()
+print(f"Platform: {platform.name}")
 
 fps = args.fps_limit
 if fps is None:
-    fps = 30 if platform == "RVC4" else 5
+    fps = 30 if platform == dai.Platform.RVC4 else 5
 
 frame_type = (
-    dai.ImgFrame.Type.BGR888i if platform == "RVC4" else dai.ImgFrame.Type.BGR888p
+    dai.ImgFrame.Type.BGR888i
+    if platform == dai.Platform.RVC4
+    else dai.ImgFrame.Type.BGR888p
 )
 
-model_description = dai.NNModelDescription(DET_MODEL, platform)
+model_description = dai.NNModelDescription.fromYamlFile(f"yunet.{platform.name}.yaml")
 nn_archive = dai.NNArchive(dai.getModelFromZoo(model_description))
 model_width = nn_archive.getInputWidth()
 model_height = nn_archive.getInputHeight()
@@ -68,21 +69,29 @@ with dai.Pipeline(device) as pipeline:
     crop_face.config_output.link(crop_manip.inputConfig)
     cam_out.link(crop_manip.inputImage)
 
-    cropped_output = crop_manip.out
+    crop_encoder = pipeline.create(dai.node.VideoEncoder)
+    crop_encoder.setMaxOutputFrameSize(1920 * 1088 * 3)
+    crop_encoder.setDefaultProfilePreset(
+        fps, dai.VideoEncoderProperties.Profile.H264_MAIN
+    )
+    crop_manip.out.link(crop_encoder.input)
 
-    if platform == "RVC4":
-        crop_encoder = pipeline.create(dai.node.VideoEncoder)
-        crop_encoder.setMaxOutputFrameSize(1920 * 1088 * 3)
-        crop_encoder.setDefaultProfilePreset(
-            fps, dai.VideoEncoderProperties.Profile.H264_MAIN
-        )
-        crop_manip.out.link(crop_encoder.input)
-        cropped_output = crop_encoder.out
+    video_encode_manip = pipeline.create(dai.node.ImageManip)
+    video_encode_manip.setMaxOutputFrameSize(model_width * model_height * 3)
+    video_encode_manip.initialConfig.setOutputSize(model_width, model_height)
+    video_encode_manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
+    nn_with_parser.passthrough.link(video_encode_manip.inputImage)
 
-    visualizer.addTopic("Video", image_manip.out, "images")
+    video_encoder = pipeline.create(dai.node.VideoEncoder)
+    video_encoder.setMaxOutputFrameSize(model_width * model_height * 3)
+    video_encoder.setDefaultProfilePreset(
+        fps, dai.VideoEncoderProperties.Profile.H264_MAIN
+    )
+    video_encode_manip.out.link(video_encoder.input)
+
+    visualizer.addTopic("Video", video_encoder.out, "images")
     visualizer.addTopic("Visualizations", nn_with_parser.out, "images")
-
-    visualizer.addTopic("Cropped Face", cropped_output, "crop")
+    visualizer.addTopic("Cropped Face", crop_encoder.out, "crop")
 
     print("Pipeline created.")
 

@@ -13,12 +13,6 @@ device = dai.Device(dai.DeviceInfo(args.device)) if args.device else dai.Device(
 platform = device.getPlatform().name
 print(f"Platform: {platform}")
 
-MODEL = (
-    "luxonis/deeplab-v3-plus:512x288"
-    if platform == "RVC4"
-    else "luxonis/deeplab-v3-plus:256x256"
-)
-
 if not args.fps_limit:
     args.fps_limit = 10 if platform == "RVC2" else 25
     print(
@@ -34,8 +28,10 @@ with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
     # depth estimation model
-    model_description = dai.NNModelDescription(MODEL, platform=platform)
-    nn_archive = dai.NNArchive(dai.getModelFromZoo(model_description, useCached=False))
+    model_description = dai.NNModelDescription.fromYamlFile(
+        f"deeplab_v3_plus.{platform}.yaml"
+    )
+    nn_archive = dai.NNArchive(dai.getModelFromZoo(model_description))
 
     # camera input
     color = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
@@ -77,10 +73,28 @@ with dai.Pipeline(device) as pipeline:
         max_disparity=stereo.initialConfig.getMaxDisparity(),
     )
 
+    output_segmentation_encoder = pipeline.create(dai.node.VideoEncoder).build(
+        input=annotation_node.output_segmentation,
+        frameRate=args.fps_limit,
+        profile=dai.VideoEncoderProperties.Profile.H264_MAIN,
+    )
+
+    output_cutout_encoder = pipeline.create(dai.node.VideoEncoder).build(
+        input=annotation_node.output_cutout,
+        frameRate=args.fps_limit,
+        profile=dai.VideoEncoderProperties.Profile.H264_MAIN,
+    )
+
+    output_depth_encoder = pipeline.create(dai.node.VideoEncoder).build(
+        input=annotation_node.output_depth,
+        frameRate=args.fps_limit,
+        profile=dai.VideoEncoderProperties.Profile.H264_MAIN,
+    )
+
     # visualization
-    visualizer.addTopic("Segmentation", annotation_node.output_segmentation)
-    visualizer.addTopic("Cutout", annotation_node.output_cutout)
-    visualizer.addTopic("Depth", annotation_node.output_depth)
+    visualizer.addTopic("Segmentation", output_segmentation_encoder.out)
+    visualizer.addTopic("Cutout", output_cutout_encoder.out)
+    visualizer.addTopic("Depth", output_depth_encoder.out)
 
     print("Pipeline created.")
 
