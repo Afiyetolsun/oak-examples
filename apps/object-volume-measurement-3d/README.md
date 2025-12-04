@@ -15,17 +15,6 @@ The frontend is built with `@luxonis/depthai-viewer-common` package, and combine
 
 Running this example requires a **Luxonis device** connected to your computer. Refer to the [documentation](https://docs.luxonis.com/software-v3/) to setup your device if you haven't done it already.
 
-Here is a list of all available parameters:
-
-```
--d DEVICE, --device DEVICE
-					Optional name, DeviceID or IP of the camera to connect to. (default: None)
--fps FPS_LIMIT, --fps-limit FPS_LIMIT
-					FPS limit. (default: None)
--ip IP, --ip IP       IP address to serve the frontend on. (default: None)
--p PORT, --port PORT  Port to serve the frontend on. (default: None)
-```
-
 ### Model Options
 
 This example currently uses **YOLOE** - a fast and efficient object detection model, that outputs bounding boxes and segmentation masks.
@@ -50,11 +39,11 @@ grid-based slicing of the objects top surface.
 
 1. Plane capture: we run RANSAC on the scene point cloud and validate with the IMU that the plane is ground-like (plane normal parallel to gravity).
    The app shows Calculating / OK / Failed status in the overlay of the Video Stream and re-requests capture if the camera has been moved or plane becomes invalid.
-1. Transform the object point cloud into the ground/table frame.
-1. Compute a minimum-area rectangle for the footprint of the object. From here we get the L, W and yaw (rotation along the z axis).
-1. Volume calculation: the footprint polygon is divided into a 2D grid of square cells (default 5 mm each). For every cell inside the footprint, the algorithm estimates a height value by looking at the object points that fall into that cell. The base area of each cell = (cell size)² and height = cell height above the ground plane.\
+2. Transform the object point cloud into the ground/table frame.
+3. Compute a minimum-area rectangle for the footprint of the object. From here we get the L, W and yaw (rotation along the z axis).
+4. Volume calculation: the footprint polygon is divided into a 2D grid of square cells (default 5 mm each). For every cell inside the footprint, the algorithm estimates a height value by looking at the object points that fall into that cell. The base area of each cell = (cell size)² and height = cell height above the ground plane.\
    The total object volume is obtained by summing the volumes of each cell across the grid. The object's height H is computed from this height grid also.
-1. Temporal smoothing is applied to the footprint, yaw, height, and dimensions (EMA-based), with rejection of sudden jumps.
+5. Temporal smoothing is applied to the footprint, yaw, height, and dimensions (EMA-based), with rejection of sudden jumps.
 
 This grid-integration method makes the volume estimation more robust to irregular and uneven object surfaces compared to just taking the bounding box. However, it is sensitive to plane fitting errors.
 
@@ -70,14 +59,6 @@ The backend publishes:
 - Measurements Overlay (OBB / HG wireframe from the object dimensions on the Video Stream)
 - Plane status (HG only)
 - Dimensions and volume measurements with the Detections Overlay
-
-### Prerequisites
-
-Before running the example you’ll need to first build the frontend. Follow these steps:
-
-1. Install FE dependencies: `cd frontend/ && npm i`
-1. Build the FE: `npm run build`
-1. Move back to origin directory: `cd ..`
 
 ## Standalone Mode (RVC4 only)
 
@@ -96,4 +77,4 @@ Once the app is built and running you can access the DepthAI Viewer locally by o
 ### Remote access
 
 1. You can upload oakapp to Luxonis Hub via oakctl
-1. And then you can just remotely open App UI via App detail page (WebRTC)
+2. And then you can just remotely open App UI via App detail page (WebRTC)

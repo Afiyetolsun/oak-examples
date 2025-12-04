@@ -82,7 +82,7 @@ KNOWN_FAILING = {
     },
     "apps/object-volume-measurement-3d": {
         "reason": "RVC4 only app",
-        "platform": ["rvc2"],
+        "platform": ["rvc4"],
     },
     "tutorials/qr-with-tiling": {
         "reason": "Missing bindings for RVC2 in Script node.",
