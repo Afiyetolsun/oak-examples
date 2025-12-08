@@ -3,6 +3,10 @@ KNOWN_FAILING = {
         "reason": "RVC4 only app",
         "rules": {"and": [{"platform": ["rvc2"]}]},
     },
+    "apps/object-volume-measurement-3d": {
+        "reason": "RVC4 only app",
+        "rules": {"and": [{"platform": ["rvc2"]}]},
+    },
     "apps/ros/ros-driver-basic": {
         "reason": "Needs ros base image",
         "rules": {"and": [{"mode": ["peripheral"]}]},
@@ -111,10 +115,6 @@ KNOWN_FAILING = {
     "streaming/poe-mqtt": {
         "reason": "Needs backend connection sometimes, flaky to test.",
         "rules": {"and": [{"platform": "all"}]},
-    },
-    "apps/object-volume-measurement-3d": {
-        "reason": "RVC4 only app",
-        "platform": ["rvc4"],
     },
     "tutorials/qr-with-tiling": {
         "reason": "Missing bindings for RVC2 in Script node. Missing `libzbar-64.dll` module on Windows and MacOS",
