@@ -30,7 +30,7 @@ device.setIrFloodLightIntensity(1)
 
 frame_type = dai.ImgFrame.Type.BGR888i
 text_features = extract_text_embeddings(
-    class_names=CLASS_NAMES, max_num_classes=MAX_NUM_CLASSES, model_name='yoloe'
+    class_names=CLASS_NAMES, max_num_classes=MAX_NUM_CLASSES, model_name="yoloe"
 )
 
 if args.fps_limit is None:
@@ -147,7 +147,7 @@ with dai.Pipeline(device) as pipeline:
         text_features = extract_text_embeddings(
             class_names=CLASS_NAMES,
             max_num_classes=MAX_NUM_CLASSES,
-            model_name='yoloe',
+            model_name="yoloe",
         )
         inputNNData = dai.NNData()
         inputNNData.addTensor(
