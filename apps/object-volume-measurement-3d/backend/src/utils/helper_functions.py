@@ -44,7 +44,7 @@ def pad_and_quantize_features(features, max_num_classes=80, model_name="yolo-wor
     return padded_features  # quantized_features
 
 
-def extract_text_embeddings(class_names, max_num_classes=80, model_name="yolo-world"):
+def extract_text_embeddings(class_names, max_num_classes=80, model_name="yoloe"):
     tokenizer_json_path = download_tokenizer(
         url="https://huggingface.co/openai/clip-vit-base-patch32/resolve/main/tokenizer.json",
         save_path="tokenizer.json",

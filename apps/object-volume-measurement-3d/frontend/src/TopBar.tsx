@@ -6,7 +6,7 @@ import {
   Flex, Icon, Label, Tooltip, Separator,
 } from '@luxonis/common-fe-components';
 import {
-    useDaiConnection, useNavigation, sortStreamsDefault, HIDDEN_STREAMS,
+    useDaiConnection, sortStreamsDefault, HIDDEN_STREAMS,
 } from '@luxonis/depthai-viewer-common';
 import { useLocation } from 'react-router-dom';
 import { FaUsersViewfinder as VisualizerIcon } from 'react-icons/fa6';
@@ -101,11 +101,8 @@ const TopicSwitcherButton = ({ type = 'button' }: { type?: 'trigger' | 'button' 
 
 /* ----- Top bar with logo + streams icon + columns menu ----- */
 export const TopBar = () => {
-  const { makePath } = useNavigation();
   const { topics } = useDaiConnection();
-
-  const logo = React.useMemo(() => makePath('logo.svg', { noSearch: true }), [makePath]);
-
+  const logo = 'logo.svg';
   return (
     <Flex
       align="center"
@@ -116,7 +113,6 @@ export const TopBar = () => {
       style={{ borderBottom: '1px solid #d3d3d3d9' }}
     >
       <img src={logo} alt="Luxonis" style={{ width: '120px' }} />
-
       <Flex height="full" gap="sm" align="center">
         {topics.length !== 0 && (
           <>
