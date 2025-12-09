@@ -1,5 +1,5 @@
 import { css } from "../styled-system/css/css.mjs";
-import { Streams, useConnection } from "@luxonis/depthai-viewer-common";
+import { Streams, useDaiConnection } from "@luxonis/depthai-viewer-common";
 import { ConfidenceSlider } from "./ConfidenceSlider.tsx";
 import { ClickCatcher } from "./ClickOverlay.tsx";
 import { ClassSelector } from "./ClassSelector.tsx";
@@ -9,7 +9,7 @@ import { Button } from "@luxonis/common-fe-components";
 import { TopBar } from "./TopBar.tsx";
 
 function App() {
-  const connection = useConnection();
+  const connection = useDaiConnection();
   const viewerRef = useRef<HTMLDivElement>(null);
 
   const clearSelection = () => {
@@ -48,6 +48,7 @@ function App() {
             defaultTopics={["Video", "Pointclouds"]}
             topicGroups={{ images: "Images", point_clouds: "Pointclouds" }}
           />
+
           <ClickCatcher
             containerRef={viewerRef}
             frameWidth={640}

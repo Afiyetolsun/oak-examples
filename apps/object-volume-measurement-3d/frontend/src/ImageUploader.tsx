@@ -1,10 +1,10 @@
 import { Button } from "@luxonis/common-fe-components";
 import { css } from "../styled-system/css/css.mjs";
 import { useState } from "react";
-import { useConnection } from "@luxonis/depthai-viewer-common";
+import { useDaiConnection } from "@luxonis/depthai-viewer-common";
 
 export function ImageUploader() {
-    const connection = useConnection();
+    const connection = useDaiConnection();
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

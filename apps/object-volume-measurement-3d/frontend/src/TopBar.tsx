@@ -6,14 +6,14 @@ import {
   Flex, Icon, Label, Tooltip, Separator,
 } from '@luxonis/common-fe-components';
 import {
-  useConnection, useNavigation, sortStreamsDefault, HIDDEN_STREAMS,
+    useDaiConnection, useNavigation, sortStreamsDefault, HIDDEN_STREAMS,
 } from '@luxonis/depthai-viewer-common';
 import { useLocation } from 'react-router-dom';
 import { FaUsersViewfinder as VisualizerIcon } from 'react-icons/fa6';
 import { StreamTypes } from '@luxonis/depthai-viewer-common';
 
 const TopicSwitcher = () => {
-  const { topics } = useConnection();
+  const { topics } = useDaiConnection();
   return topics.length !== 0 && (
     <DropdownMenu>
       <Tooltip content="Streams">
@@ -29,7 +29,7 @@ const TopicSwitcher = () => {
 };
 
 const TopicSwitcherItems = () => {
-  const { topics, toggleTopic } = useConnection();
+  const { topics, toggleTopic } = useDaiConnection();
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
 
@@ -102,7 +102,7 @@ const TopicSwitcherButton = ({ type = 'button' }: { type?: 'trigger' | 'button' 
 /* ----- Top bar with logo + streams icon + columns menu ----- */
 export const TopBar = () => {
   const { makePath } = useNavigation();
-  const { topics } = useConnection();
+  const { topics } = useDaiConnection();
 
   const logo = React.useMemo(() => makePath('logo.svg', { noSearch: true }), [makePath]);
 
