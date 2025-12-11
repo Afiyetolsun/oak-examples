@@ -1,4 +1,4 @@
-identifier = "com.luxonis.apps.object-volume-measurement-3d"
+identifier = "com.example.apps.object-volume-measurement-3d"
 entrypoint = ["bash", "-c", "/usr/bin/runsvdir -P /etc/service"]
 app_version = "0.9.3"
 
@@ -25,7 +25,7 @@ source_path = "./frontend"
 steps = ["bash -c 'cd /app/frontend/src && export NODE_OPTIONS=--max-old-space-size=4096 && . $HOME/.nvm/nvm.sh && npm install && npm run build'"]
 
 [env]
-PYTHONUNBUFFERED         = "1"
+PYTHONUNBUFFERED = "1"
 
 [base_image]
 api_url = "https://registry-1.docker.io"
