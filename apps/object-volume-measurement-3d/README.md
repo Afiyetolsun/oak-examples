@@ -1,4 +1,4 @@
-# Extended 3D Measurement
+# Object Volume Measurement 3D
 
 This example demonstrates a practical approach for measuring objects in 3D using DepthAI.\
 On the DepthAI backend, it runs **YOLOE** model on-device, with configurable class labels and confidence threshold - both controllable via the frontend.
@@ -77,4 +77,4 @@ Once the app is built and running you can access the DepthAI Viewer locally by o
 ### Remote access
 
 1. You can upload oakapp to Luxonis Hub via oakctl
-2. And then you can just remotely open App UI via App detail page (WebRTC)
+2. And then you can just remotely open App UI via App detail page
