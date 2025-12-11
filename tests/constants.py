@@ -4,8 +4,22 @@ KNOWN_FAILING = {
         "rules": {"and": [{"platform": ["rvc2"]}]},
     },
     "apps/object-volume-measurement-3d": {
-        "reason": "RVC4 only app",
-        "rules": {"and": [{"platform": ["rvc2"]}]},
+        "reason": "Not supported for peripheral; RVC4 only app",
+        "rules": {
+            "and": [
+                {"mode": ["peripheral"]},
+                {"platform": ["rvc2"]},
+            ],
+        },
+    },
+    "apps/people-demographics-and-sentiment-analysis": {
+        "reason": "Not supported for peripheral; RVC4 only app",
+        "rules": {
+            "and": [
+                {"mode": ["peripheral"]},
+                {"platform": ["rvc2"]},
+            ],
+        },
     },
     "apps/ros/ros-driver-basic": {
         "reason": "Needs ros base image",
@@ -54,6 +68,15 @@ KNOWN_FAILING = {
     "integrations/rerun": {
         "reason": "No matching distribution found for rerun-sdk==0.15.1 on Windows",
         "rules": {"and": [{"os": ["win"]}]},
+    },
+    "apps/data-collection": {
+        "reason": "Not supported for peripheral; RVC4 only app",
+        "rules": {
+            "and": [
+                {"mode": ["peripheral"]},
+                {"platform": ["rvc2"]},
+            ],
+        },
     },
     "integrations/roboflow-dataset": {
         "reason": "Can't run without arguments (e.g. roboflow api-key)",
@@ -125,7 +148,6 @@ KNOWN_FAILING = {
         "rules": {"or": [{"platform": ["rvc2"]}, {"os": ["win"]}]},
     },
 }
-
 
 IGNORED_WARNINGS = [
     "The issued warnings are orientative, based on optimal settings for a single network, if multiple networks are running in parallel the optimal settings may vary",
