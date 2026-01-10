@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import cv2
 import depthai as dai
-from depthai_nodes.node import ApplyColormap
+from depthai_nodes.node import ApplyDepthColormap
 from typing import Optional
 from utils.arguments import initialize_argparser
 
@@ -77,7 +77,7 @@ with dai.Pipeline(device) as pipeline:
         if platform == dai.Platform.RVC2:
             stereo.setOutputSize(*STEREO_RESOLUTION)
 
-        coloredDepth = pipeline.create(ApplyColormap).build(stereo.disparity)
+        coloredDepth = pipeline.create(ApplyDepthColormap).build(stereo.disparity)
         coloredDepth.setColormap(cv2.COLORMAP_JET)
         visualizer.addTopic("Depth", coloredDepth.out)
 

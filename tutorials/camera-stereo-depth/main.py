@@ -1,6 +1,6 @@
 import depthai as dai
 from utils.arguments import initialize_argparser
-from depthai_nodes.node import ApplyColormap
+from depthai_nodes.node import ApplyDepthColormap
 import cv2
 
 _, args = initialize_argparser()
@@ -40,8 +40,7 @@ with dai.Pipeline(device) as pipeline:
     stereo.setExtendedDisparity(True)
     stereo.setLeftRightCheck(True)
 
-    depth_parser = pipeline.create(ApplyColormap).build(stereo.disparity)
-    # depth_parser.setMaxValue(int(stereo.initialConfig.getMaxDisparity())) # NOTE: Uncomment when DAI fixes a bug
+    depth_parser = pipeline.create(ApplyDepthColormap).build(stereo.disparity)
     depth_parser.setColormap(cv2.COLORMAP_JET)
 
     encoder = pipeline.create(dai.node.VideoEncoder)
