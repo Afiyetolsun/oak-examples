@@ -1,4 +1,4 @@
-depthai==3.0.0
-depthai-nodes==0.3.4
+depthai==3.2.0
+depthai-nodes @ git+https://github.com/luxonis/depthai-nodes.git@973d4017bea6e1289324aea75b069e4222e79d98  # depth visualization
 opencv-python-headless==4.10.0.84
 numpy>=1.22
