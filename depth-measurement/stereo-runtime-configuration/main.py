@@ -36,7 +36,7 @@ with dai.Pipeline(device) as pipeline:
     stereo_controller = pipeline.create(StereoConfigController).build(preview=preview)
     stereo_controller.out_cfg.link(stereo.inputConfig)
 
-    depth_color = pipeline.create(ApplyDepthColormap).build(arr=stereo.disparity)
+    depth_color = pipeline.create(ApplyDepthColormap).build(stereo.disparity)
     depth_color.setColormap(cv2.COLORMAP_JET)
 
     sync = pipeline.create(dai.node.Sync)
