@@ -1,5 +1,5 @@
 depthai==3.2.1
 #depthai-nodes==0.3.7
-depthai-nodes @ git+https://github.com/luxonis/depthai-nodes.git@973d4017bea6e1289324aea75b069e4222e79d98   # depth visualization
+depthai-nodes @ git+https://github.com/luxonis/depthai-nodes.git@1b1dd7953feeaff1ca1a8c2234c532704b167d5f  # depth visualization
 opencv-contrib-python==4.12.0.88
 numpy>=1.22
