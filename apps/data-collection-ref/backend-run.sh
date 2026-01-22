@@ -1,3 +1,3 @@
 #!/bin/sh
 echo "Starting Backend"
-exec python3.12 /app/backend/src/main_ref_test.py
+exec python3.12 /app/backend/src/main.py

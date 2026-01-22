@@ -1,22 +1,37 @@
+"""
+Test script: All NEW refactored nodes.
+
+Tests:
+- CameraSourceNode
+- NNDetectionNode
+- TrackingNode
+- PromptsNode
+- SnappingNode
+- ExportService
+"""
 import depthai as dai
-from config.system_configuration import SystemConfiguration
-from core.export_service import ExportService
-from core.neural_network.prompts.nn_prompts_manager import NNPromptsManager
-from core.neural_network.pipeline.nn_pipeline_setup import NNPipelineBuilder
-from core.snapping.snaps_manager import SnappingServiceManager
-from core.video.video_factory import VideoFactory
 import logging as log
+
+from config.system_configuration import SystemConfiguration
+
+from camera.camera_source_node import CameraSourceNode
+from nn.nn_detection_node import NNDetectionNode
+from tracking.tracking_node import TrackingNode
+from prompting.prompts_node import PromptsNode
+from snapping.snapping_node import SnappingNode
+
+from export_service import ExportService
 
 log.basicConfig(level=log.INFO)
 logger = log.getLogger(__name__)
 
 
 def main():
-    log.basicConfig(level=log.INFO)
     device = dai.Device()
     visualizer = dai.RemoteConnection(serveFrontend=False)
 
     platform = device.getPlatformAsString()
+    logger.info(f"Platform: {platform}")
 
     if platform != "RVC4":
         raise ValueError("This example is supported only on RVC4 platform")
@@ -25,48 +40,67 @@ def main():
     config.build()
 
     with dai.Pipeline(device) as pipeline:
-        video_factory = VideoFactory(pipeline, config.get_video_config())
-        visualizer.addTopic("Video", video_factory.get_encoded_output())
-        video_node = video_factory.get_video_node()
+        logger.info("Creating pipeline with NEW nodes...")
 
-        nn_pipeline = NNPipelineBuilder(
-            pipeline,
-            video_node,
-            config.get_neural_network_config(),
+        camera_source = pipeline.create(CameraSourceNode).build(
+            cfg=config.get_video_config()
         )
-        nn_pipeline.build()
-        visualizer.addTopic(
-            "Annotations", nn_pipeline.annotated_detections_as_img_det_extended.out
+        cam_out = camera_source.preview
+        encoded_out = camera_source.encoded
+
+        visualizer.addTopic("Video", encoded_out)
+        logger.info("CameraSourceNode created")
+
+        nn_node = pipeline.create(NNDetectionNode).build(
+            image_source=cam_out,
+            cfg=config.get_neural_network_config(),
         )
 
-        prompts_manager = NNPromptsManager(
-            pipeline, video_node, config.get_prompts_config(), nn_pipeline.controller
-        )
-        prompts_manager.build()
-        prompts_manager.register_services(visualizer)
+        visualizer.addTopic("Annotations", nn_node.detections_extended)
+        logger.info("NNDetectionNode created")
 
-        snaps_manager = SnappingServiceManager(
-            pipeline,
-            video_node,
-            nn_pipeline.tracker,
-            nn_pipeline.annotated_detections_as_img_detections,
-            config.get_snaps_config(),
+        tracking_node = pipeline.create(TrackingNode).build(
+            image_source=cam_out,
+            detections=nn_node.detections,
+            cfg=config.get_neural_network_config().nn_yaml.tracker,
         )
-        snaps_manager.build()
-        snaps_manager.register_service(visualizer)
+        logger.info("TrackingNode created")
+
+        prompts_node = pipeline.create(PromptsNode).build(
+            image_source=cam_out,
+            controller=nn_node.controller,
+            cfg=config.get_prompts_config(),
+        )
+        prompts_node.register_services(visualizer)
+        logger.info("PromptsNode created!")
+
+        snapping_node = pipeline.create(SnappingNode).build(
+            image_source=cam_out,
+            detections=nn_node.detections,
+            tracklets=tracking_node.tracklets,
+            cfg=config.get_snaps_config(),
+        )
+        snapping_node.register_service(visualizer)
+        logger.info("SnappingNode created!")
 
         export_service = ExportService(
-            nn_pipeline.controller.get_model_state(), snaps_manager.get_conditions()
+            nn_node.controller.get_model_state(),
+            snapping_node.conditions,
         )
         visualizer.registerService(export_service.name, export_service.handle)
+        logger.info("ExportService registered")
 
+        logger.info("Pipeline created. Starting...")
         pipeline.start()
         visualizer.registerPipeline(pipeline)
-        logger.info("Pipeline started")
+        logger.info("Pipeline running!")
 
         while pipeline.isRunning():
+            key = visualizer.waitKey(1)
             pipeline.processTasks()
-            visualizer.waitKey(1)
+            if key == ord("q"):
+                logger.info("Got 'q' key. Exiting...")
+                break
 
 
 if __name__ == "__main__":
