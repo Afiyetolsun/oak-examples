@@ -37,7 +37,7 @@ class TrackingNode(dai.node.ThreadedHostNode):
         detections.link(self._tracker.inputDetections)
 
         # Outputs
-        self.tracklets = self._tracker.outTracklets
+        self.tracklets = self._tracker.out
 
         return self
 

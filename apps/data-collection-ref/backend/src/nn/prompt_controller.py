@@ -95,10 +95,9 @@ class PromptController:
         self.state.current_classes = list(class_names)
 
     def set_confidence_threshold(self, threshold: float) -> None:
-        with self._lock:
-            t = float(max(0.0, min(1.0, threshold)))
-            self._parser.setConfidenceThreshold(t)
-            self.state.confidence_threshold = t
+        t = float(max(0.0, min(1.0, threshold)))
+        self._parser.setConfidenceThreshold(t)
+        self.state.confidence_threshold = t
 
     def get_model_state(self) -> ModelState:
         return self.state

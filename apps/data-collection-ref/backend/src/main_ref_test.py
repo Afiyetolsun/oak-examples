@@ -93,7 +93,7 @@ def main():
         tracking_node = pipeline.create(TrackingNode).build(
             image_source=cam_out,
             detections=nn_node.detections,
-            cfg=config.get_neural_network_config().tracker,
+            cfg=config.get_neural_network_config().nn_yaml.tracker,
         )
         logger.info("TrackingNode created")
 

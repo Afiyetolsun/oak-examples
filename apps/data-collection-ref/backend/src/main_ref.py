@@ -10,6 +10,7 @@ import logging as log
 from camera.camera_source_node import CameraSourceNode
 from nn.nn_detection_node import NNDetectionNode
 from tracking.tracking_node import TrackingNode
+from prompting.prompts_node import PromptsNode
 
 log.basicConfig(level=log.INFO)
 logger = log.getLogger(__name__)
