@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from box import Box
 
-from core.neural_network.prompts.encoders.base_prompt_encoder import BasePromptEncoder
+from prompting.encoders.base_prompt_encoder import BasePromptEncoder
 
 
 class VisualPromptEncoder(BasePromptEncoder):

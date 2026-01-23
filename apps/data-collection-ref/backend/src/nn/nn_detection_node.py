@@ -49,14 +49,13 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
         @param cfg: Neural network configuration.
         """
         # NN config
-        backend = cfg.nn_yaml.nn_backend
         self._nn.setNNArchive(cfg.model.archive)
-        self._nn.setBackend(backend.type)
+        self._nn.setBackend(cfg.backend_type)
         self._nn.setBackendProperties({
-            "runtime": backend.runtime,
-            "performance_profile": backend.performance_profile,
+            "runtime": cfg.runtime,
+            "performance_profile": cfg.performance_profile
         })
-        self._nn.setNumInferenceThreads(backend.inference_threads)
+        self._nn.setNumInferenceThreads(cfg.num_inference_threads)
         self._nn.getParser(0).setConfidenceThreshold(0.0)
 
         image_source.link(self._nn.inputs["images"])

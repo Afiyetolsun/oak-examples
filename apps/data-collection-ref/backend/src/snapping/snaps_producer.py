@@ -1,8 +1,7 @@
 import depthai as dai
 import time
 
-from core.snapping.conditions.base_condition import Condition
-from core.snapping.conditions.condition_key import ConditionKey
+from snapping.conditions import ConditionKey, Condition
 from depthai_nodes.message import SnapData
 import logging as log
 

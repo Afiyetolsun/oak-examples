@@ -1,61 +1,92 @@
-from __future__ import annotations
 
-from argparse import Namespace
+import depthai as dai
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from argparse import Namespace
+
+from config.config_data_classes import ModelInfo, VideoConfig, NeuralNetworkConfig, TrackingConfig
 from box import Box
 
-from config.cli_env_loader import CLIEnvLoader
-from config.yaml_config_manager import YamlConfigManager
-from config.model_loader import ModelLoader
-from config.config_data_classes import ModelInfo, VideoConfig, NeuralNetworkConfig
+
+@dataclass
+class SystemConfig:
+    """All configuration for the pipeline."""
+    video: VideoConfig
+    nn: NeuralNetworkConfig
+    tracker: TrackingConfig
+    prompts: Box
+    snaps: Box
 
 
-class SystemConfiguration:
-    """
-    Class that manages configuration initialization.
-    """
+def build_configuration(platform: str, args: Namespace) -> SystemConfig:
+    """Build all configuration from CLI args and YAML files."""
+    yaml = _load_yamls(Path(__file__).parent / "yaml_configs")
+    model = _load_model(platform, yaml.prompts.precision)
 
-    def __init__(self, platform: str):
-        self._platform: str = platform
-        self._args: Namespace = None
-        self._yaml: Optional[YamlConfigManager] = None
-        self._model_info: Optional[ModelInfo] = None
+    # Video config
+    fps = args.fps_limit or yaml.video.default_fps
+    video = VideoConfig(
+        resolution=yaml.video.video_resolution,
+        fps=fps,
+        media_path=args.media_path,
+        width=model.width,
+        height=model.height,
+    )
 
-    def build(self):
-        """Initialize all configuration subsystems."""
-        self._args = CLIEnvLoader.parse_arguments()
+    # NN config
+    b = yaml.nn.nn_backend
+    nn = NeuralNetworkConfig(
+        model=model,
+        backend_type=b.type,
+        runtime=b.runtime,
+        performance_profile=b.performance_profile,
+        num_inference_threads=b.inference_threads,
+    )
 
-        base = Path(__file__).parent / "yaml_configs"
+    # Tracking config
+    t = yaml.nn.tracker
+    tracker = TrackingConfig(
+        track_per_class=t.track_per_class,
+        birth_threshold=t.birth_threshold,
+        max_lifespan=t.max_lifespan,
+        occlusion_ratio_threshold=t.occlusion_ratio_threshold,
+        tracker_threshold=t.tracker_threshold,
+    )
 
-        self._yaml = YamlConfigManager(base)
-        self._yaml.load_all()
+    return SystemConfig(
+        video=video,
+        nn=nn,
+        tracker=tracker,
+        prompts=yaml.prompts,
+        snaps=yaml.conditions,
+    )
 
-        model_loader = ModelLoader(self._platform, self._args)
-        self._model_info = model_loader.load_model_info()
-        self._model_info.precision = self._yaml.prompts.precision
 
-    def get_video_config(self) -> VideoConfig:
-        if self._args.fps_limit is None:
-            self._args.fps_limit = self._yaml.video.default_fps
-            print(f"\nFPS limit set to {self._args.fps_limit} for {self._platform}\n")
+def _load_yamls(base: Path) -> Box:
+    def safe_load(file: str) -> Box:
+        path = base / file
+        if not path.exists():
+            raise FileNotFoundError(f"Missing YAML: {path}")
+        return Box.from_yaml(filename=path)
 
-        return VideoConfig(
-            resolution=self._yaml.video.video_resolution,
-            fps=self._args.fps_limit,
-            media_path=self._args.media_path,
-            width=self._model_info.width,
-            height=self._model_info.height,
-        )
+    return Box({
+        "nn": safe_load("nn_config.yaml"),
+        "video": safe_load("visual_constants.yaml"),
+        "conditions": safe_load("conditions.yaml"),
+        "prompts": safe_load("prompts_config.yaml"),
+    })
 
-    def get_neural_network_config(self) -> NeuralNetworkConfig:
-        return NeuralNetworkConfig(
-            nn_yaml=self._yaml.nn,
-            model=self._model_info,
-        )
 
-    def get_snaps_config(self) -> Box:
-        return self._yaml.conditions
+def _load_model(platform: str, precision: str) -> ModelInfo:
+    models_dir = Path(__file__).parent.parent / "depthai_models"
+    yaml_path = models_dir / f"yoloe_v8_l_fp16.{platform}.yaml"
 
-    def get_prompts_config(self) -> Box:
-        return self._yaml.prompts
+    if not yaml_path.exists():
+        raise SystemExit(f"Model YAML not found: {yaml_path}")
+
+    desc = dai.NNModelDescription.fromYamlFile(str(yaml_path))
+    desc.platform = platform
+    archive = dai.NNArchive(dai.getModelFromZoo(desc))
+    w, h = archive.getInputSize()
+
+    return ModelInfo(yaml_path, w, h, desc, archive, precision)

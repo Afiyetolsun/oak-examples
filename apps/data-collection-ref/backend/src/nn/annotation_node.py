@@ -10,7 +10,6 @@ class AnnotationNode(dai.node.HostNode):
     def __init__(self, label_encoding: Dict[int, str] = None) -> None:
         super().__init__()
         self._label_encoding = label_encoding if label_encoding is not None else {}
-        self.out_detections = self.createOutput()
 
     def set_label_encoding(self, label_encoding: Dict[int, str]) -> None:
         """Sets the label encoding.

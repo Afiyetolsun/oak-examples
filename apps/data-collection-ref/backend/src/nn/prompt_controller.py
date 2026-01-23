@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from depthai_nodes.node import ParsingNeuralNetwork, ImgDetectionsFilter
-from core.neural_network.pipeline.annotation_node import AnnotationNode
+from nn.annotation_node import AnnotationNode
 
 
 @dataclass

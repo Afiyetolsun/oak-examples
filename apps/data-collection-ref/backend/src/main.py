@@ -1,25 +1,14 @@
-"""
-Test script: All NEW refactored nodes.
-
-Tests:
-- CameraSourceNode
-- NNDetectionNode
-- TrackingNode
-- PromptsNode
-- SnappingNode
-- ExportService
-"""
 import depthai as dai
 import logging as log
 
-from config.system_configuration import SystemConfiguration
+from config.arguments import parse_args
+from config.system_configuration import build_configuration
 
 from camera.camera_source_node import CameraSourceNode
 from nn.nn_detection_node import NNDetectionNode
 from tracking.tracking_node import TrackingNode
 from prompting.prompts_node import PromptsNode
 from snapping.snapping_node import SnappingNode
-
 from export_service import ExportService
 
 log.basicConfig(level=log.INFO)
@@ -36,14 +25,14 @@ def main():
     if platform != "RVC4":
         raise ValueError("This example is supported only on RVC4 platform")
 
-    config = SystemConfiguration(platform)
-    config.build()
+    args = parse_args()
+    config = build_configuration(platform, args)
 
     with dai.Pipeline(device) as pipeline:
         logger.info("Creating pipeline with NEW nodes...")
 
         camera_source = pipeline.create(CameraSourceNode).build(
-            cfg=config.get_video_config()
+            cfg=config.video
         )
         cam_out = camera_source.preview
         encoded_out = camera_source.encoded
@@ -53,7 +42,7 @@ def main():
 
         nn_node = pipeline.create(NNDetectionNode).build(
             image_source=cam_out,
-            cfg=config.get_neural_network_config(),
+            cfg=config.nn,
         )
 
         visualizer.addTopic("Annotations", nn_node.detections_extended)
@@ -62,14 +51,14 @@ def main():
         tracking_node = pipeline.create(TrackingNode).build(
             image_source=cam_out,
             detections=nn_node.detections,
-            cfg=config.get_neural_network_config().nn_yaml.tracker,
+            cfg=config.tracker,
         )
         logger.info("TrackingNode created")
 
         prompts_node = pipeline.create(PromptsNode).build(
             image_source=cam_out,
             controller=nn_node.controller,
-            cfg=config.get_prompts_config(),
+            cfg=config.prompts,
         )
         prompts_node.register_services(visualizer)
         logger.info("PromptsNode created!")
@@ -78,7 +67,7 @@ def main():
             image_source=cam_out,
             detections=nn_node.detections,
             tracklets=tracking_node.tracklets,
-            cfg=config.get_snaps_config(),
+            cfg=config.snaps,
         )
         snapping_node.register_service(visualizer)
         logger.info("SnappingNode created!")

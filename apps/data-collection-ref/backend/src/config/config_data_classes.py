@@ -1,13 +1,11 @@
 from pathlib import Path
 from dataclasses import dataclass
 import depthai as dai
-from box import Box
 
 
 @dataclass
 class ModelInfo:
-    """Stores paths and dimensions of the detection model."""
-
+    """Model metadata from DepthAI zoo."""
     yaml_path: Path
     width: int
     height: int
@@ -18,8 +16,7 @@ class ModelInfo:
 
 @dataclass
 class VideoConfig:
-    """Stores video configuration (resolution, FPS)."""
-
+    """Config for CameraSourceNode."""
     resolution: list[int]
     fps: int
     media_path: str
@@ -29,7 +26,19 @@ class VideoConfig:
 
 @dataclass
 class NeuralNetworkConfig:
-    """Stores neural network configuration (confidence thresholds, etc.)."""
-
-    nn_yaml: Box
+    """Config for NNDetectionNode."""
     model: ModelInfo
+    backend_type: str
+    runtime: str
+    performance_profile: str
+    num_inference_threads: int
+
+
+@dataclass
+class TrackingConfig:
+    """Config for TrackingNode."""
+    track_per_class: bool
+    birth_threshold: int
+    max_lifespan: int
+    occlusion_ratio_threshold: float
+    tracker_threshold: float
