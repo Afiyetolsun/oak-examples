@@ -31,21 +31,15 @@ def main():
     with dai.Pipeline(device) as pipeline:
         logger.info("Creating pipeline with NEW nodes...")
 
-        camera_source = pipeline.create(CameraSourceNode).build(
-            cfg=config.video
-        )
+        camera_source = pipeline.create(CameraSourceNode).build(cfg=config.video)
         cam_out = camera_source.preview
         encoded_out = camera_source.encoded
-
-        visualizer.addTopic("Video", encoded_out)
         logger.info("CameraSourceNode created")
 
         nn_node = pipeline.create(NNDetectionNode).build(
             image_source=cam_out,
             cfg=config.nn,
         )
-
-        visualizer.addTopic("Annotations", nn_node.detections_extended)
         logger.info("NNDetectionNode created")
 
         tracking_node = pipeline.create(TrackingNode).build(
@@ -60,7 +54,6 @@ def main():
             controller=nn_node.controller,
             cfg=config.prompts,
         )
-        prompts_node.register_services(visualizer)
         logger.info("PromptsNode created!")
 
         snapping_node = pipeline.create(SnappingNode).build(
@@ -69,15 +62,20 @@ def main():
             tracklets=tracking_node.tracklets,
             cfg=config.snaps,
         )
-        snapping_node.register_service(visualizer)
         logger.info("SnappingNode created!")
 
+        visualizer.addTopic("Video", encoded_out)
+        visualizer.addTopic("Annotations", nn_node.detections_extended)
+
+        # FE services
         export_service = ExportService(
             nn_node.controller.get_model_state(),
             snapping_node.conditions,
         )
         visualizer.registerService(export_service.name, export_service.handle)
-        logger.info("ExportService registered")
+        prompts_node.register_services(visualizer)
+        snapping_node.register_service(visualizer)
+        logger.info("FE services registered!")
 
         logger.info("Pipeline created. Starting...")
         pipeline.start()
