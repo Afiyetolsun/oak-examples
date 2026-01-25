@@ -3,6 +3,9 @@ import numpy as np
 
 
 class FrameCacheNode(dai.node.HostNode):
+    """
+    Host node that caches the latest ImgFrame as a NumPy BGR image for prompt services.
+    """
     def __init__(self) -> None:
         super().__init__()
         self._last_frame: np.ndarray | None = None

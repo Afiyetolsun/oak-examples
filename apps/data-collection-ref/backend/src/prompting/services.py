@@ -1,254 +1,185 @@
-"""
-Frontend prompt services - handles all prompt-related API requests.
-
-All services follow the same pattern:
-1. Validate payload with Pydantic
-2. Process with encoder (extract embeddings)
-3. Send prompts to controller
-4. Return response
-"""
 import base64
-from enum import Enum
-from typing import TYPE_CHECKING
-
 import cv2
 import numpy as np
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
-if TYPE_CHECKING:
-    from prompts.encoders.textual_encoder import TextualEncoder
-    from prompts.encoders.visual_encoder import VisualEncoder
-    from prompts.frame_cache_node import FrameCacheNode
-    from nn.prompt_controller import PromptController
-
-
-# =============================================================================
-# Service Names
-# =============================================================================
-
-class ServiceName(str, Enum):
-    """Unique identifiers for prompt services."""
-    CLASS_UPDATE = "Class Update Service"
-    THRESHOLD_UPDATE = "Threshold Update Service"
-    IMAGE_UPLOAD = "Image Upload Service"
-    BBOX_PROMPT = "BBox Prompt Service"
+from nn.prompt_controller import PromptController
+from prompting.encoders.textual_prompt_encoder import TextualPromptEncoder
+from prompting.encoders.visual_prompt_encoder import VisualPromptEncoder
+from prompting.frame_cache_node import FrameCacheNode
+from prompting.payloads import (
+    ClassUpdatePayload,
+    ThresholdUpdatePayload,
+    ImageUploadPayload,
+    BBoxPromptPayload,
+)
 
 
-# =============================================================================
-# Payloads (Pydantic models for validation)
-# =============================================================================
-
-class ClassUpdatePayload(BaseModel):
-    """Payload for updating detection classes."""
-    classes: list[str] = Field(..., min_length=1, description="List of class names")
-
-
-class ThresholdUpdatePayload(BaseModel):
-    """Payload for updating NN confidence threshold."""
-    threshold: float = Field(..., ge=0.0, le=1.0)
+def _decode_image(data_uri: str) -> np.ndarray | None:
+    """Decode a base64 image (supports raw base64 or data URI)."""
+    try:
+        base64_data = data_uri.split(",", 1)[1] if "," in data_uri else data_uri
+        np_arr = np.frombuffer(base64.b64decode(base64_data), np.uint8)
+        return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
 
 
-class ImageUploadPayload(BaseModel):
-    """Payload for uploading an image from the frontend."""
-    filename: str = Field(..., min_length=1)
-    type: str = Field(..., min_length=1)
-    data: str = Field(..., description="Base64-encoded image data")
+def _make_bbox_mask(image: np.ndarray, bbox: BBoxPromptPayload) -> np.ndarray | None:
+    """Create a float mask in [0,1] for the bbox."""
+    H, W = image.shape[:2]
 
+    x0 = int(bbox.x * W)
+    y0 = int(bbox.y * H)
+    x1 = int((bbox.x + bbox.width) * W)
+    y1 = int((bbox.y + bbox.height) * H)
 
-class BBoxPromptPayload(BaseModel):
-    """Payload for bounding box region selection."""
-    x: float = Field(..., ge=0.0, le=1.0, description="Normalized x coordinate [0-1]")
-    y: float = Field(..., ge=0.0, le=1.0, description="Normalized y coordinate [0-1]")
-    width: float = Field(..., gt=0.0, le=1.0, description="Normalized width [0-1]")
-    height: float = Field(..., gt=0.0, le=1.0, description="Normalized height [0-1]")
+    x0 = max(0, min(W, x0))
+    x1 = max(0, min(W, x1))
+    y0 = max(0, min(H, y0))
+    y1 = max(0, min(H, y1))
 
+    if x1 <= x0 or y1 <= y0:
+        return None
 
-# =============================================================================
-# Services
-# =============================================================================
+    mask = np.zeros((H, W), dtype=np.float32)
+    mask[y0:y1, x0:x1] = 1.0
+    return mask
+
 
 class ClassUpdateService:
-    """
-    Handles text-based class updates.
+    """Update detection classes via text prompts."""
 
-    Takes a list of class names, encodes them using CLIP text encoder,
-    and sends the embeddings to the detection model.
-    """
+    name = "Class Update Service"
 
-    name = ServiceName.CLASS_UPDATE
-
-    def __init__(self, controller: "PromptController", encoder: "TextualEncoder"):
+    def __init__(
+        self,
+        controller: PromptController,
+        text_encoder: TextualPromptEncoder,
+        visual_encoder: VisualPromptEncoder,
+    ):
         self._controller = controller
-        self._encoder = encoder
-        self._class_names: list[str] = []
+        self._text = text_encoder
+        self._visual = visual_encoder
 
     def handle(self, payload: dict) -> dict:
-        """Process class update request."""
         try:
             validated = ClassUpdatePayload.model_validate(payload)
         except ValidationError as e:
             return {"ok": False, "error": e.errors()}
 
-        self._class_names = validated.classes
+        classes = validated.classes
+        text_embeddings = self._text.extract_embeddings(classes)
+        dummy_image = self._visual.make_dummy()
 
-        # Encode text prompts
-        text_embeddings = self._encoder.extract_embeddings(self._class_names)
-        dummy = self._encoder.make_dummy()
-
-        # Send to model (text goes as text_prompt, dummy as image_prompt)
         self._controller.apply_prompts(
-            image_prompt=dummy,
+            image_prompt=dummy_image,
             text_prompt=text_embeddings,
-            class_names=self._class_names,
-            offset=self._encoder.offset,
+            class_names=classes,
+            offset=self._text.offset,
         )
 
-        return {"ok": True, "classes": self._class_names}
+        return {"ok": True, "classes": classes}
 
 
 class ThresholdUpdateService:
-    """
-    Handles confidence threshold updates.
+    """Update detection confidence threshold."""
 
-    Simple service that adjusts the detection confidence threshold.
-    """
+    name = "Threshold Update Service"
 
-    name = ServiceName.THRESHOLD_UPDATE
-
-    def __init__(self, controller: "PromptController"):
+    def __init__(self, controller: PromptController):
         self._controller = controller
 
     def handle(self, payload: dict) -> dict:
-        """Process threshold update request."""
         try:
             validated = ThresholdUpdatePayload.model_validate(payload)
         except ValidationError as e:
             return {"ok": False, "error": e.errors()}
 
-        clamped = max(0.0, min(1.0, validated.threshold))
-        self._controller.set_confidence_threshold(clamped)
-
-        return {"ok": True, "threshold": clamped}
+        self._controller.set_confidence_threshold(validated.threshold)
+        return {"ok": True, "threshold": float(validated.threshold)}
 
 
 class ImageUploadService:
-    """
-    Handles image upload for visual prompting.
+    """Upload reference image for visual prompting."""
 
-    Takes a base64-encoded image, extracts visual embeddings using SAM encoder,
-    and sends them to the detection model.
-    """
+    name = "Image Upload Service"
 
-    name = ServiceName.IMAGE_UPLOAD
-
-    def __init__(self, controller: "PromptController", encoder: "VisualEncoder"):
+    def __init__(
+        self,
+        controller: PromptController,
+        visual_encoder: VisualPromptEncoder,
+        text_encoder: TextualPromptEncoder,
+    ):
         self._controller = controller
-        self._encoder = encoder
-        self._class_names: list[str] = []
+        self._visual = visual_encoder
+        self._text = text_encoder
 
     def handle(self, payload: dict) -> dict:
-        """Process image upload request."""
         try:
             validated = ImageUploadPayload.model_validate(payload)
         except ValidationError as e:
             return {"ok": False, "error": e.errors()}
 
-        # Use filename (without extension) as class name
-        self._class_names = [validated.filename.split(".")[0]]
+        class_name = validated.filename.rsplit(".", 1)[0]
 
-        # Decode image
-        image = self._decode_image(validated.data)
+        image = _decode_image(validated.data)
+        if image is None:
+            return {"ok": False, "error": "Invalid image data"}
 
-        # Extract visual embeddings
-        image_embeddings = self._encoder.extract_embeddings(image)
-        dummy = self._encoder.make_dummy()
+        image_embeddings = self._visual.extract_embeddings(image)
+        dummy_text = self._text.make_dummy()
 
-        # Send to model (image goes as image_prompt, dummy as text_prompt)
         self._controller.apply_prompts(
             image_prompt=image_embeddings,
-            text_prompt=dummy,
-            class_names=self._class_names,
-            offset=self._encoder.offset,
+            text_prompt=dummy_text,
+            class_names=[class_name],
+            offset=self._visual.offset,
         )
 
-        return {"ok": True, "class": self._class_names}
-
-    def _decode_image(self, data_uri: str) -> np.ndarray:
-        """Convert base64-encoded image to OpenCV array."""
-        if "," in data_uri:
-            _, base64_data = data_uri.split(",", 1)
-        else:
-            base64_data = data_uri
-        np_arr = np.frombuffer(base64.b64decode(base64_data), np.uint8)
-        return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        return {"ok": True, "classes": class_name}
 
 
 class BBoxPromptService:
-    """
-    Handles bounding box region selection for visual prompting.
+    """Select region via bounding box for visual prompting."""
 
-    Takes normalized bbox coordinates, creates a mask from the current frame,
-    extracts visual embeddings for that region, and sends them to the model.
-    """
-
-    name = ServiceName.BBOX_PROMPT
+    name = "BBox Prompt Service"
 
     def __init__(
         self,
-        controller: "PromptController",
-        encoder: "VisualEncoder",
-        frame_cache: "FrameCacheNode",
+        controller: PromptController,
+        visual_encoder: VisualPromptEncoder,
+        text_encoder: TextualPromptEncoder,
+        frame_cache: FrameCacheNode,
     ):
         self._controller = controller
-        self._encoder = encoder
+        self._visual = visual_encoder
+        self._text = text_encoder
         self._frame_cache = frame_cache
-        self._class_names: list[str] = ["Bounding Box Object"]
 
     def handle(self, payload: dict) -> dict:
-        """Process bbox prompt request."""
         try:
             validated = BBoxPromptPayload.model_validate(payload)
         except ValidationError as e:
             return {"ok": False, "error": e.errors()}
 
-        # Get current frame
         image = self._frame_cache.get_last_frame()
         if image is None:
             return {"ok": False, "error": "No frame available"}
 
-        # Create mask from bbox
-        mask = self._make_mask(image, validated)
+        mask = _make_bbox_mask(image, validated)
+        if mask is None:
+            return {"ok": False, "error": "Invalid bbox"}
 
-        # Extract visual embeddings with mask
-        image_embeddings = self._encoder.extract_embeddings(image, mask)
-        dummy = self._encoder.make_dummy()
+        image_embeddings = self._visual.extract_embeddings(image, mask)
+        dummy_text = self._text.make_dummy()
 
-        # Send to model
+        class_names = ["Selected Region"]
         self._controller.apply_prompts(
             image_prompt=image_embeddings,
-            text_prompt=dummy,
-            class_names=self._class_names,
-            offset=self._encoder.offset,
+            text_prompt=dummy_text,
+            class_names=class_names,
+            offset=self._visual.offset,
         )
 
-        return {"ok": True, "classes": self._class_names}
-
-    def _make_mask(self, image: np.ndarray, bbox: BBoxPromptPayload) -> np.ndarray:
-        """Build a binary mask corresponding to the provided bounding box."""
-        H, W = image.shape[:2]
-
-        x0 = int(bbox.x * W)
-        y0 = int(bbox.y * H)
-        x1 = int((bbox.x + bbox.width) * W)
-        y1 = int((bbox.y + bbox.height) * H)
-
-        # Ensure proper ordering
-        x0, x1 = sorted((x0, x1))
-        y0, y1 = sorted((y0, y1))
-
-        if x1 <= x0 or y1 <= y0:
-            raise ValueError(f"Invalid bbox coordinates: {(x0, y0, x1, y1)}")
-
-        mask = np.zeros((H, W), dtype=np.float32)
-        mask[y0:y1, x0:x1] = 1.0
-        return mask
+        return {"ok": True, "classes": class_names}

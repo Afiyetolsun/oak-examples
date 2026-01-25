@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from time import time
+from time import monotonic
 from typing import Any, Dict, List, Optional
 
 import depthai as dai
 from box import Box
 from pydantic import BaseModel, Field
+import logging
 
 from snapping.tracklet_analyzer import TrackletAnalyzer
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +21,14 @@ class ConditionKey(str, Enum):
     LOST_MID = "lostMid"
 
 
-# FE payload for condition config
 class ConditionConfig(BaseModel):
-    """Configuration for a single snapping condition."""
+    """Configuration for a single snapping condition (YAML/FE payload)."""
     enabled: bool = Field(default=True)
     cooldown: Optional[float] = Field(default=None, ge=0.0)
     threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     margin: Optional[float] = Field(default=None, ge=0.0)
 
 
-# Base condition class
 class Condition(ABC):
     """
     Abstract base class for all snap trigger conditions.
@@ -57,37 +55,34 @@ class Condition(ABC):
         self.tags = tags or []
         self.enabled: bool = False
         self.cooldown: float = max(0.0, float(default_cooldown))
-        self._last_trigger_time: Optional[float] = None
+        self._last_trigger_time: Optional[float] = None  # monotonic seconds
 
     @abstractmethod
     def should_trigger(self, detections: list, tracklets: dai.Tracklets) -> bool:
         """Return True if this condition should trigger a snap."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def make_extras(self) -> Dict[str, str]:
         """Return optional metadata to attach to the snap."""
-        pass
+        raise NotImplementedError
 
     def get_key(self) -> ConditionKey:
         return self.KEY
 
-    def apply_config(self, conf: ConditionConfig):
-        """Apply configuration from frontend."""
+    def apply_config(self, conf: ConditionConfig) -> None:
+        """Apply configuration from YAML / frontend."""
         self.enabled = conf.enabled
         if not self.enabled:
             self.reset_cooldown()
         if conf.cooldown is not None:
-            self.cooldown = conf.cooldown
+            self.cooldown = float(max(0.0, conf.cooldown))
 
     def export_config(self) -> Dict[str, Any]:
         """Export current configuration for frontend."""
-        return {
-            "enabled": self.enabled,
-            "cooldown": self.cooldown,
-        }
+        return {"enabled": self.enabled, "cooldown": self.cooldown}
 
-    def reset_cooldown(self):
+    def reset_cooldown(self) -> None:
         """Reset internal cooldown tracking."""
         self._last_trigger_time = None
 
@@ -95,20 +90,19 @@ class Condition(ABC):
         """Return True if enough time has passed since last trigger."""
         if self._last_trigger_time is None:
             return True
-        return (time() - self._last_trigger_time) >= self.cooldown
+        return (monotonic() - self._last_trigger_time) >= self.cooldown
 
-    def mark_triggered(self):
+    def mark_triggered(self) -> None:
         """Record that this condition has just fired."""
-        self._last_trigger_time = time()
+        self._last_trigger_time = monotonic()
 
 
-# Conditions
 class TimedCondition(Condition):
     """Triggers snaps at regular time intervals."""
 
     KEY = ConditionKey.TIMED
 
-    def __init__(self, name: str, default_cooldown: float, tags: List[str] = None):
+    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
         super().__init__(name, default_cooldown, tags or [])
 
     def should_trigger(self, detections: list, tracklets: dai.Tracklets) -> bool:
@@ -126,12 +120,12 @@ class NoDetectionsCondition(Condition):
 
     KEY = ConditionKey.NO_DETECTIONS
 
-    def __init__(self, name: str, default_cooldown: float, tags: List[str] = None):
+    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
         super().__init__(name, default_cooldown, tags or [])
 
     def should_trigger(self, detections: list, tracklets: dai.Tracklets) -> bool:
         if self.enabled and self._cooldown_passed():
-            if not detections or len(detections) == 0:
+            if not detections:
                 self.mark_triggered()
                 return True
         return False
@@ -145,7 +139,7 @@ class LowConfidenceCondition(Condition):
 
     KEY = ConditionKey.LOW_CONFIDENCE
 
-    def __init__(self, name: str, default_cooldown: float, tags: List[str] = None):
+    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
         super().__init__(name, default_cooldown, tags or [])
         self.threshold: float = 0.3
         self.last_lowest: float = 0.0
@@ -163,7 +157,7 @@ class LowConfidenceCondition(Condition):
         self.last_lowest = min((float(d.confidence) for d in detections), default=1.0)
         return self.last_lowest < self.threshold
 
-    def apply_config(self, conf: ConditionConfig):
+    def apply_config(self, conf: ConditionConfig) -> None:
         super().apply_config(conf)
         if conf.threshold is not None:
             val = float(conf.threshold)
@@ -187,7 +181,7 @@ class LostMidCondition(Condition):
 
     KEY = ConditionKey.LOST_MID
 
-    def __init__(self, name: str, default_cooldown: float, tags: List[str] = None):
+    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
         super().__init__(name, default_cooldown, tags or [])
         self.margin: float = 0.2
         self.prev_tracked: Dict[int, bool] = {}
@@ -199,30 +193,26 @@ class LostMidCondition(Condition):
                 return True
         return False
 
-    def _check_tracklets(self, tracklets) -> bool:
+    def _check_tracklets(self, tracklets: Optional[dai.Tracklets]) -> bool:
         if tracklets is None:
             return False
 
         triggered = False
         for t in getattr(tracklets, "tracklets", []):
             tr = TrackletAnalyzer(t)
-            # Only trigger if object was previously tracked and is now lost
+
             if tr.is_lost and tr.was_tracked(self.prev_tracked):
                 rc = tr.center_area()
                 if rc is not None:
                     cx, cy, _ = rc
-                    # Check if lost in center region (not near edges)
-                    if (
-                        self.margin <= cx <= 1 - self.margin
-                        and self.margin <= cy <= 1 - self.margin
-                    ):
+                    if self.margin <= cx <= 1 - self.margin and self.margin <= cy <= 1 - self.margin:
                         triggered = True
-            # Always update state for next frame
+
             tr.update_state(self.prev_tracked)
 
         return triggered
 
-    def apply_config(self, conf: ConditionConfig):
+    def apply_config(self, conf: ConditionConfig) -> None:
         super().apply_config(conf)
         if conf.margin is not None:
             val = float(conf.margin)
@@ -237,7 +227,6 @@ class LostMidCondition(Condition):
         return {"reason": "lost_in_middle", "margin": f"{round(self.margin, 3)}"}
 
 
-# Map of condition key to class
 CONDITION_CLASSES = {
     ConditionKey.TIMED: TimedCondition,
     ConditionKey.NO_DETECTIONS: NoDetectionsCondition,
@@ -255,7 +244,7 @@ def build_conditions(config: Box) -> Dict[ConditionKey, Condition]:
     """
     conditions: Dict[ConditionKey, Condition] = {}
 
-    default_cooldown = config.get("cooldown", 60.0)
+    default_cooldown = float(config.get("cooldown", 60.0))
 
     for entry in config.get("conditions", []):
         key_str = entry.get("key")
@@ -275,7 +264,6 @@ def build_conditions(config: Box) -> Dict[ConditionKey, Condition]:
                 tags=entry.get("tags", []),
             )
 
-            # Apply config from YAML
             initial_config = ConditionConfig(
                 enabled=entry.get("enabled", False),
                 cooldown=entry.get("cooldown"),

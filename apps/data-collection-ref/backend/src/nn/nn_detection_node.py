@@ -4,24 +4,27 @@ from config.config_data_classes import NeuralNetworkConfig
 from nn.prompt_controller import PromptController
 from nn.annotation_node import AnnotationNode
 
+from typing import Optional
+
 
 class NNDetectionNode(dai.node.ThreadedHostNode):
     """
     High-level node grouping the neural-network detection block.
-    Handles object detection + filtering + annotation + tracking.
+    Handles object detection + filtering + annotation, and exposes a PromptController to
+    update detection classes and confidence threshold at runtime.
 
     Internal pipeline:
         image_source
           -> ParsingNeuralNetwork
-          -> ImgDetectionsFilter (filter by labels)
+          -> ImgDetectionsFilter (filter by enabled label IDs)
           -> AnnotationNode (add label names for visualization)
           -> ImgDetectionsBridge (convert to dai.ImgDetections)
           -> AnnotationNode (re-add label names after bridge)
 
     Exposes:
-      - detections_extended: ImgDetectionsExtended with labels (for visualizer)
-      - detections: dai.ImgDetections with labels (for snapping)
-      - controller: PromptController for dynamic prompt updates
+      - detections_extended: ImgDetectionsExtended with label names (for visualizer)
+      - detections: dai.ImgDetections with label names (for snapping)
+      - controller: PromptController for dynamic prompt updates (classes, confidence threshold)
     """
     def __init__(self) -> None:
         super().__init__()
@@ -33,11 +36,11 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
         self._annotation: AnnotationNode = self.createSubnode(AnnotationNode)
 
         # Internal controller
-        self.controller: PromptController = None
+        self.controller: Optional[PromptController] = None
 
         # Outputs
-        self.detections_extended: dai.Node.Output = None
-        self.detections: dai.Node.Output = None
+        self.detections_extended: Optional[dai.Node.Output] = None
+        self.detections: Optional[dai.Node.Output] = None
 
     def build(
         self,
@@ -76,15 +79,14 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
 
         # Controller
         self.controller = PromptController(
-            self._nn,
-            self._det_filter,
-            self._annotation_extended,
-            self._annotation,
-            cfg.model.precision,
+            nn=self._nn,
+            det_filter=self._det_filter,
+            annotators=[self._annotation_extended, self._annotation],
+            precision=cfg.model.precision,
         )
 
         return self
 
     def run(self) -> None:
-        # High-level node: no host-side processing, subnodes run on device.
+        # High-level node: no host-side processing here. Processing happens in the composed subnodes.
         pass

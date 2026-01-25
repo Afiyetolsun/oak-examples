@@ -1,5 +1,6 @@
 import depthai as dai
 from box import Box
+from typing import Optional
 
 from depthai_nodes.node import SnapsUploader
 
@@ -15,18 +16,14 @@ class SnappingNode(dai.node.ThreadedHostNode):
     Internal structure:
         frame + detections + tracklets
           -> SnapsProducer (evaluates conditions, creates SnapData)
-          -> SnapsUploader (handles storage/transmission)
+          -> SnapsUploader (uploads snaps)
 
-    Components:
-        - Conditions: Configurable triggers (timed, no_detections, etc.)
-        - SnappingService: Frontend API for configuration
-
-    Usage:
-        snapping_node = pipeline.create(SnappingNode).build(...)
-        visualizer.registerService(snapping_node.service.name, snapping_node.service.handle)
+    Exposes:
+      - service: SnappingService for runtime configuration via RemoteConnection
+      - conditions: condition instances (used by ExportService)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self._producer: SnapsProducer = self.createSubnode(SnapsProducer)
@@ -34,7 +31,7 @@ class SnappingNode(dai.node.ThreadedHostNode):
 
         self._conditions: dict[ConditionKey, Condition] = {}
 
-        self.service: SnappingService = None
+        self.service: Optional[SnappingService] = None
 
     def build(
         self,
@@ -44,17 +41,13 @@ class SnappingNode(dai.node.ThreadedHostNode):
         cfg: Box,
     ) -> "SnappingNode":
         """
-        Build the snapping node.
-
         @param image_source: BGR frames from camera.
-        @param detections: ImgDetections from detection node.
+        @param detections: dai.ImgDetections from detection node.
         @param tracklets: Tracklets output from tracking node.
         @param cfg: Snapping configuration (conditions, cooldown, etc.)
         """
-        # Build conditions from config
         self._conditions = build_conditions(cfg)
 
-        # Configure producer
         self._producer.build(
             frame=image_source,
             conditions=self._conditions,
@@ -62,10 +55,8 @@ class SnappingNode(dai.node.ThreadedHostNode):
             tracklets=tracklets,
         )
 
-        # Link producer -> uploader
         self._uploader.build(self._producer.out)
 
-        # Create service
         self.service = SnappingService(self._conditions)
 
         return self
@@ -76,6 +67,8 @@ class SnappingNode(dai.node.ThreadedHostNode):
 
         @param visualizer: RemoteConnection to register services with.
         """
+        if self.service is None:
+            raise RuntimeError("SnappingNode.build() must be called before register_service()")
         visualizer.registerService(self.service.name, self.service.handle)
 
     @property
@@ -84,5 +77,5 @@ class SnappingNode(dai.node.ThreadedHostNode):
         return self._conditions
 
     def run(self) -> None:
-        # High-level node: subnodes handle processing.
+        # High-level node: no host-side processing here. Processing happens in the composed subnodes.
         pass

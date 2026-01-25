@@ -1,7 +1,7 @@
 import numpy as np
 import depthai as dai
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List
 
 from depthai_nodes.node import ParsingNeuralNetwork, ImgDetectionsFilter
 from nn.annotation_node import AnnotationNode
@@ -9,7 +9,7 @@ from nn.annotation_node import AnnotationNode
 
 @dataclass
 class ModelState:
-    current_classes: list[str] = None
+    current_classes: list[str] = field(default_factory=list)
     confidence_threshold: float = 0.0
 
 
@@ -28,27 +28,15 @@ class PromptController:
         self,
         nn: ParsingNeuralNetwork,
         det_filter: ImgDetectionsFilter,
-        annot_ext: AnnotationNode,
-        annot_det: AnnotationNode,
+        annotators: List[AnnotationNode],
         precision: str,
     ):
         self._nn = nn
         self._det_filter = det_filter
-        self._annot_ext = annot_ext
-        self._annot_det = annot_det
+        self._annotators = annotators
         self._precision = precision
 
-        self.state = ModelState(current_classes=[])
-
-        self._text_q: Optional[dai.InputQueue] = None
-        self._img_q: Optional[dai.InputQueue] = None
-
-        self._parser = self._nn.getParser(0)
-
-    def _ensure_queues(self):
-        """Input queues setup."""
-        if self._text_q is not None and self._img_q is not None:
-            return
+        self.state = ModelState()
 
         self._text_q = self._nn.inputs["texts"].createInputQueue()
         self._img_q = self._nn.inputs["image_prompts"].createInputQueue()
@@ -56,9 +44,13 @@ class PromptController:
         self._nn.inputs["texts"].setReusePreviousMessage(True)
         self._nn.inputs["image_prompts"].setReusePreviousMessage(True)
 
+        self._parser = self._nn.getParser(0)
+
     def _tensor_dtype(self) -> dai.TensorInfo.DataType:
         """Get tensor data type based on model precision."""
-        return dai.TensorInfo.DataType.FP16 if self._precision == "fp16" else dai.TensorInfo.DataType.U8F
+        if self._precision == "fp16":
+            return dai.TensorInfo.DataType.FP16
+        return dai.TensorInfo.DataType.U8
 
     @staticmethod
     def _make_nn_data(tensor_name: str, data: np.ndarray, dtype: dai.TensorInfo.DataType) -> dai.NNData:
@@ -71,11 +63,14 @@ class PromptController:
         @param label_names: List of class names to keep.
         @param offset: Label index offset (default: 0).
         """
+        if offset < 0:
+            raise ValueError("offset must be >= 0")
+
         self._det_filter.setLabels(labels=list(range(offset, offset + len(label_names))), keep=True)
 
         encoding = {offset + k: v for k, v in enumerate(label_names)}
-        self._annot_ext.set_label_encoding(encoding)
-        self._annot_det.set_label_encoding(encoding)
+        for annotator in self._annotators:
+            annotator.set_label_encoding(encoding)
 
     def apply_prompts(
         self,
@@ -84,7 +79,6 @@ class PromptController:
         class_names: list[str],
         offset: int = 0,
     ) -> None:
-        self._ensure_queues()
         dtype = self._tensor_dtype()
 
         # Tensor names must match those defined in the model YAML

@@ -1,9 +1,11 @@
 import depthai as dai
+from typing import Optional
+from config.config_data_classes import TrackingConfig
 
 
 class TrackingNode(dai.node.ThreadedHostNode):
     """
-    High-level node grouping the tracking block.
+    High-level node grouping the object tracking block.
 
     Exposes:
       - tracklets: dai.Tracklets with tracking IDs.
@@ -12,18 +14,20 @@ class TrackingNode(dai.node.ThreadedHostNode):
     def __init__(self) -> None:
         super().__init__()
 
-        self._tracker: dai.node.Tracker = self.createSubnode(dai.node.ObjectTracker)
-
-        # Outputs
-        self.tracklets: dai.Node.Output = None
+        self._tracker: dai.node.ObjectTracker = self.createSubnode(dai.node.ObjectTracker)
+        self.tracklets: Optional[dai.Node.Output] = None
 
     def build(
         self,
         image_source: dai.Node.Output,
         detections: dai.Node.Output,
-        cfg,
+        cfg: TrackingConfig,
     ) -> "TrackingNode":
-
+        """
+        @param image_source: Frame stream used by the tracker (dai.ImgFrame).
+        @param detections: Detection stream to track (dai.ImgDetections).
+        @param cfg: Tracker configuration.
+        """
         self._tracker.setTrackerType(dai.TrackerType.SHORT_TERM_IMAGELESS)
         self._tracker.setTrackerIdAssignmentPolicy(dai.TrackerIdAssignmentPolicy.UNIQUE_ID)
         self._tracker.setTrackingPerClass(cfg.track_per_class)
@@ -38,9 +42,8 @@ class TrackingNode(dai.node.ThreadedHostNode):
 
         # Outputs
         self.tracklets = self._tracker.out
-
         return self
 
     def run(self) -> None:
-        # High-level node: no host-side processing, subnodes run on device.
+        # High-level node: no host-side processing here. Processing happens in the composed subnodes.
         pass
