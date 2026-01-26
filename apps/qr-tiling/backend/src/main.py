@@ -8,8 +8,8 @@ from qr_scan.host_qr_scanner import QRScanner
 from tiling.tile_grid_visualizer import TileGridVisualizer
 from tiling.tiling_config_service import TilingConfigService
 
-TILING_SIZE = (2560, 1440)
-OUT_SIZE = (2560, 1440)
+TILING_SIZE = (3840, 2160)
+OUT_SIZE = (1920, 1080)
 
 visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device()
@@ -28,7 +28,7 @@ with dai.Pipeline(device) as pipeline:
 
     camera = pipeline.create(dai.node.Camera).build()
 
-    rbg_tiling = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.BGR888i)
+    rbg_tiling = camera.requestOutput(TILING_SIZE, type=dai.ImgFrame.Type.BGR888i)
     rgb_out = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
 
     tile_manager = pipeline.create(DynamicTiling).build(
