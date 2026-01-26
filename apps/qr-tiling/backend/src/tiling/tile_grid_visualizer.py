@@ -38,13 +38,19 @@ class TileGridVisualizer(BaseHostNode):
 
     def process(self, preview: dai.ImgFrame) -> None:
         frame = preview.getCvFrame()
-        annotations = self._create_grid_annotations(frame, preview.getTimestamp())
+        annotations = self._create_grid_annotations(
+            frame, preview.getTimestamp(), preview.getSequenceNum()
+        )
         self._out.send(annotations)
 
     def _create_grid_annotations(
-        self, frame: np.ndarray, timestamp
+        self, frame: np.ndarray, timestamp, sequence_num: int
     ) -> dai.ImgAnnotations:
         """Create a tile grid overlay annotations."""
+        print(
+            f"[TileGridVisualizer] Creating annotations with {len(self._tile_positions)} tiles"
+        )
+        print(f"[TileGridVisualizer] Frame shape: {frame.shape}")
         img_annots = dai.ImgAnnotations()
         img_annot = dai.ImgAnnotation()
 
@@ -83,6 +89,7 @@ class TileGridVisualizer(BaseHostNode):
 
         img_annots.annotations.append(img_annot)
         img_annots.setTimestamp(timestamp)
+        img_annots.setSequenceNum(sequence_num)
 
         return img_annots
 

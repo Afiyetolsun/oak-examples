@@ -48,8 +48,6 @@ with dai.Pipeline(device) as pipeline:
         input=nn_input, nn_source=nn_archive
     )
 
-    nn.input.setBlocking(False)
-
     patcher = pipeline.create(TilesPatcher).build(
         img_frames=cam_out, nn=nn.out, conf_thresh=0.3, iou_thresh=0.2
     )
@@ -89,5 +87,5 @@ with dai.Pipeline(device) as pipeline:
         pipeline.processTasks()
         key = visualizer.waitKey(1)
         if key == ord("q"):
-            print("Got q key from the remote connection!")
+            print("Got q key. Exiting...")
             break
