@@ -8,7 +8,6 @@ from qr_scan.host_qr_scanner import QRScanner
 from tiling.tile_grid_visualizer import TileGridVisualizer
 from tiling.tiling_config_service import TilingConfigService
 
-IMG_SHAPE = (1920, 1080)
 OUT_SIZE = (3840, 2160)
 
 visualizer = dai.RemoteConnection(httpPort=8082)
@@ -27,24 +26,20 @@ with dai.Pipeline(device) as pipeline:
     )
 
     cam = pipeline.create(dai.node.Camera).build()
-    rbg_nn_size = cam.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.NV12)
+
+    rbg_nn_size = cam.requestOutput(
+        nn_archive.getInputSize(), type=dai.ImgFrame.Type.BGR888i
+    )
     rgb_out = cam.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
 
     tile_manager = pipeline.create(DynamicTiling).build(
         img_output=rbg_nn_size,
-        img_shape=IMG_SHAPE,
+        img_shape=nn_archive.getInputSize(),
         nn_shape=nn_archive.getInputSize(),
         resize_mode=dai.ImageManipConfig.ResizeMode.STRETCH,
     )
 
-    interleaved_manip = pipeline.create(dai.node.ImageManip)
-    interleaved_manip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888i)
-    interleaved_manip.setMaxOutputFrameSize(
-        nn_archive.getInputHeight() * nn_archive.getInputWidth() * 3
-    )
-    tile_manager.out.link(interleaved_manip.inputImage)
-
-    nn_input = interleaved_manip.out
+    nn_input = tile_manager.out
 
     nn = pipeline.create(ParsingNeuralNetwork).build(
         input=nn_input, nn_source=nn_archive
