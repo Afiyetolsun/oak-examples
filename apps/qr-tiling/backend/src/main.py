@@ -9,6 +9,7 @@ from tiling.tile_grid_visualizer import TileGridVisualizer
 from tiling.tiling_config_service import TilingConfigService
 
 IMG_SHAPE = (1920, 1080)
+OUT_SIZE = (3840, 2160)
 
 visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device()
@@ -26,10 +27,11 @@ with dai.Pipeline(device) as pipeline:
     )
 
     cam = pipeline.create(dai.node.Camera).build()
-    cam_out = cam.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.NV12)
+    rbg_nn_size = cam.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.NV12)
+    rgb_out = cam.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
 
     tile_manager = pipeline.create(DynamicTiling).build(
-        img_output=cam_out,
+        img_output=rbg_nn_size,
         img_shape=IMG_SHAPE,
         nn_shape=nn_archive.getInputSize(),
         resize_mode=dai.ImageManipConfig.ResizeMode.STRETCH,
@@ -49,16 +51,16 @@ with dai.Pipeline(device) as pipeline:
     )
 
     patcher = pipeline.create(TilesPatcher).build(
-        img_frames=cam_out, nn=nn.out, conf_thresh=0.3, iou_thresh=0.2
+        img_frames=rbg_nn_size, nn=nn.out, conf_thresh=0.3, iou_thresh=0.2
     )
 
     scanner = pipeline.create(QRScanner).build(
-        preview=cam_out,
+        preview=rbg_nn_size,
         detections=patcher.out,
     )
 
     grid_visualizer = pipeline.create(TileGridVisualizer).build(
-        preview=cam_out, tile_positions=tile_manager.tile_positions
+        preview=rbg_nn_size, tile_positions=tile_manager.tile_positions
     )
 
     encoder = pipeline.create(dai.node.VideoEncoder)
@@ -66,7 +68,7 @@ with dai.Pipeline(device) as pipeline:
         fps=30,
         profile=dai.VideoEncoderProperties.Profile.H264_MAIN,
     )
-    cam_out.link(encoder.input)
+    rgb_out.link(encoder.input)
 
     visualizer.addTopic("Video", encoder.out, "images")
     visualizer.addTopic("Visualizations", scanner.out, "images")
