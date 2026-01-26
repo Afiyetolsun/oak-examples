@@ -29,7 +29,6 @@ class TilingConfigService(BaseService[TilingConfigPayload]):
     def handle_typed(self, payload: TilingConfigPayload) -> dict:
         grid_size = (payload.cols, payload.rows)
 
-        print(f"Got payload {payload}")
         self._tile_manager.updateConfig(
             grid_size=grid_size,
             overlap=payload.overlap,

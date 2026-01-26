@@ -8,7 +8,8 @@ from qr_scan.host_qr_scanner import QRScanner
 from tiling.tile_grid_visualizer import TileGridVisualizer
 from tiling.tiling_config_service import TilingConfigService
 
-OUT_SIZE = (3840, 2160)
+TILING_SIZE = (2560, 1440)
+OUT_SIZE = (2560, 1440)
 
 visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device()
@@ -25,49 +26,62 @@ with dai.Pipeline(device) as pipeline:
         )
     )
 
-    cam = pipeline.create(dai.node.Camera).build()
+    camera = pipeline.create(dai.node.Camera).build()
 
-    rbg_nn_size = cam.requestOutput(
-        nn_archive.getInputSize(), type=dai.ImgFrame.Type.BGR888i
-    )
-    rgb_out = cam.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
+    rbg_tiling = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.BGR888i)
+    rgb_out = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
 
     tile_manager = pipeline.create(DynamicTiling).build(
-        img_output=rbg_nn_size,
-        img_shape=nn_archive.getInputSize(),
+        img_output=rbg_tiling,
+        img_shape=TILING_SIZE,
         nn_shape=nn_archive.getInputSize(),
         resize_mode=dai.ImageManipConfig.ResizeMode.STRETCH,
     )
 
-    nn_input = tile_manager.out
+    interleaved_manip = pipeline.create(dai.node.ImageManip)
+    interleaved_manip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888i)
+    interleaved_manip.setMaxOutputFrameSize(
+        nn_archive.getInputHeight() * nn_archive.getInputWidth() * 3
+    )
+    tile_manager.out.link(interleaved_manip.inputImage)
+
+    nn_input = interleaved_manip.out
 
     nn = pipeline.create(ParsingNeuralNetwork).build(
         input=nn_input, nn_source=nn_archive
     )
 
     patcher = pipeline.create(TilesPatcher).build(
-        img_frames=rbg_nn_size, nn=nn.out, conf_thresh=0.3, iou_thresh=0.2
+        img_frames=rbg_tiling, nn=nn.out, conf_thresh=0.3, iou_thresh=0.2
     )
 
     scanner = pipeline.create(QRScanner).build(
-        preview=rbg_nn_size,
+        preview=rbg_tiling,
         detections=patcher.out,
     )
 
     grid_visualizer = pipeline.create(TileGridVisualizer).build(
-        preview=rbg_nn_size, tile_positions=tile_manager.tile_positions
+        preview=rgb_out,
+        tile_positions=tile_manager.tile_positions,
+        source_size=TILING_SIZE,
     )
+
+    grid_manip = pipeline.create(dai.node.ImageManip)
+    grid_manip.initialConfig.setOutputSize(OUT_SIZE[0], OUT_SIZE[1])
+    grid_manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
+    grid_manip.setMaxOutputFrameSize(int(OUT_SIZE[0] * OUT_SIZE[1] * 3))
+
+    grid_visualizer.out.link(grid_manip.inputImage)
 
     encoder = pipeline.create(dai.node.VideoEncoder)
     encoder.setDefaultProfilePreset(
         fps=30,
         profile=dai.VideoEncoderProperties.Profile.H264_MAIN,
     )
-    rgb_out.link(encoder.input)
+    grid_manip.out.link(encoder.input)
 
     visualizer.addTopic("Video", encoder.out, "images")
     visualizer.addTopic("Visualizations", scanner.out, "images")
-    visualizer.addTopic("Tiling grid", grid_visualizer.out, "images")
 
     tiling_service = TilingConfigService(
         tile_manager=tile_manager, grid_visualizer=grid_visualizer
