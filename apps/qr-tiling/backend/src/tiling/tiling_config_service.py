@@ -1,10 +1,10 @@
-from typing import List, Optional, Any
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 from base_service import BaseService
 from tiling.dynamic_tiling import DynamicTiling
-from tiling.tile_grid_visualizer import TileGridVisualizer
+from tiling.tile_grid_visualizer import TileGridOverlay
 
 
 class TilingConfigPayload(BaseModel):
@@ -17,28 +17,22 @@ class TilingConfigPayload(BaseModel):
 
 class TilingConfigService(BaseService[TilingConfigPayload]):
     NAME = "Tiling Config Service"
-    FETCH = "Get Current Params Service"
     PAYLOAD_MODEL = TilingConfigPayload
 
-    def __init__(
-        self, tile_manager: DynamicTiling, grid_visualizer: TileGridVisualizer
-    ):
-        self._tile_manager = tile_manager
+    def __init__(self, dynamic_tiling: DynamicTiling, grid_visualizer: TileGridOverlay):
+        self._dynamic_tiling = dynamic_tiling
         self._grid_visualizer = grid_visualizer
 
     def handle_typed(self, payload: TilingConfigPayload) -> dict:
         grid_size = (payload.cols, payload.rows)
 
-        self._tile_manager.updateConfig(
+        self._dynamic_tiling.updateConfig(
             grid_size=grid_size,
             overlap=payload.overlap,
             global_detection=payload.global_detection,
             grid_matrix=payload.grid_matrix,
         )
 
-        self._grid_visualizer.tile_positions = self._tile_manager.tile_positions
+        self._grid_visualizer.tile_positions = self._dynamic_tiling.tile_positions
 
         return {"ok": True}
-
-    def get_current_params(self, __req: dict = None) -> dict[str, Any]:
-        return self._tile_manager.current_params

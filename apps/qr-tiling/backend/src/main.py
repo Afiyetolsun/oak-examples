@@ -3,9 +3,11 @@ from pathlib import Path
 import depthai as dai
 from depthai_nodes.node import ParsingNeuralNetwork, TilesPatcher
 
+from params_service import CurrentParamsService
+from qr_scan.qr_service import QRConfigService
 from tiling.dynamic_tiling import DynamicTiling
 from qr_scan.host_qr_scanner import QRScanner
-from tiling.tile_grid_visualizer import TileGridVisualizer
+from tiling.tile_grid_visualizer import TileGridOverlay
 from tiling.tiling_config_service import TilingConfigService
 
 TILING_SIZE = (3840, 2160)
@@ -31,7 +33,7 @@ with dai.Pipeline(device) as pipeline:
     rbg_tiling = camera.requestOutput(TILING_SIZE, type=dai.ImgFrame.Type.BGR888i)
     rgb_out = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
 
-    tile_manager = pipeline.create(DynamicTiling).build(
+    dynamic_tiling = pipeline.create(DynamicTiling).build(
         img_output=rbg_tiling,
         img_shape=TILING_SIZE,
         nn_shape=nn_archive.getInputSize(),
@@ -43,7 +45,7 @@ with dai.Pipeline(device) as pipeline:
     interleaved_manip.setMaxOutputFrameSize(
         nn_archive.getInputHeight() * nn_archive.getInputWidth() * 3
     )
-    tile_manager.out.link(interleaved_manip.inputImage)
+    dynamic_tiling.out.link(interleaved_manip.inputImage)
 
     nn_input = interleaved_manip.out
 
@@ -60,9 +62,12 @@ with dai.Pipeline(device) as pipeline:
         detections=patcher.out,
     )
 
-    grid_visualizer = pipeline.create(TileGridVisualizer).build(
+    qr_service = QRConfigService(scanner=scanner)
+    visualizer.registerService(qr_service.NAME, qr_service)
+
+    grid_overlay = pipeline.create(TileGridOverlay).build(
         preview=rgb_out,
-        tile_positions=tile_manager.tile_positions,
+        tile_positions=dynamic_tiling.tile_positions,
         source_size=TILING_SIZE,
     )
 
@@ -71,7 +76,7 @@ with dai.Pipeline(device) as pipeline:
     grid_manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
     grid_manip.setMaxOutputFrameSize(int(OUT_SIZE[0] * OUT_SIZE[1] * 3))
 
-    grid_visualizer.out.link(grid_manip.inputImage)
+    grid_overlay.out.link(grid_manip.inputImage)
 
     encoder = pipeline.create(dai.node.VideoEncoder)
     encoder.setDefaultProfilePreset(
@@ -84,10 +89,16 @@ with dai.Pipeline(device) as pipeline:
     visualizer.addTopic("Visualizations", scanner.out, "images")
 
     tiling_service = TilingConfigService(
-        tile_manager=tile_manager, grid_visualizer=grid_visualizer
+        dynamic_tiling=dynamic_tiling, grid_visualizer=grid_overlay
     )
+
     visualizer.registerService(tiling_service.NAME, tiling_service)
-    visualizer.registerService(tiling_service.FETCH, tiling_service.get_current_params)
+
+    params_service = CurrentParamsService(
+        dynamic_tiling=dynamic_tiling, qr_scanner=scanner
+    )
+
+    visualizer.registerService(params_service.NAME, params_service)
 
     print("Pipeline created.")
 

@@ -4,18 +4,25 @@ import { TilingControl, TilingParams } from "./TilingControl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotifications } from "./Notifications";
 
+export type CurrentParamsResponse = {
+    tiling: TilingParams;
+    scanner: boolean;
+};
+
 function App() {
     const connection = useDaiConnection();
     const { notify } = useNotifications();
 
     const [paramsLoaded, setParamsLoaded] = useState(false);
     const [tilingParams, setTilingParams] = useState<TilingParams | null>(null);
+    const [decodeEnabled, setDecodeEnabled] = useState<boolean>(false);
 
     const streamContainerRef = useRef<HTMLDivElement>(null);
 
-    const onCurrentParams = useCallback((response: TilingParams) => {
+    const onCurrentParams = useCallback((response: CurrentParamsResponse) => {
         console.log("[Init] Returned tiling params:", response);
-        setTilingParams(response);
+        setTilingParams(response.tiling);
+        setDecodeEnabled(response.scanner)
         setParamsLoaded(true);
     }, []);
 
@@ -38,6 +45,16 @@ function App() {
             "Get Current Params Service"
         );
     }, [connection, notify]);
+
+    const sendQRConfig = useCallback(
+    (state: boolean) => {
+        (connection as any).daiConnection?.postToService(
+            "QR Config Service",
+            { state }
+        );
+    },
+    [connection]
+);
 
     return (
         <main
@@ -72,26 +89,65 @@ function App() {
                     display: "flex",
                     flexDirection: "column",
                     gap: "md",
-                    maxHeight: "100vh",
+                    height: "100vh",
+                    overflowY: "auto",
                     paddingRight: "sm",
                 })}
             >
                 <h1 className={css({ fontSize: "2xl", fontWeight: "bold" })}>
-                    Tiling Configuration
+                    Configuration
                 </h1>
 
                 {!paramsLoaded || !tilingParams ? (
                     <span>Loading tiling configuration…</span>
                 ) : (
-                    <div
-                        className={css({
-                            flex: 1,
-                            overflowY: "auto",
-                            paddingRight: "xs",
-                            minHeight: 0,
-                        })}
-                    >
-                        <TilingControl initialParams={tilingParams} />
+                    <div>
+                        <span style={{ fontSize: 16, fontWeight: "bold" }}>
+                                QR Code Configuration
+                            </span>
+                        <div
+                            className={css({
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "sm",
+                                padding: "sm",
+                                borderRadius: "md",
+                                backgroundColor: "gray.50",
+                                border: "1px solid",
+                                borderColor: "gray.200",
+                                marginBottom: "md",
+                                marginTop: "md",
+                            })}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={decodeEnabled}
+                                onChange={(e) => {
+                                    const newState = e.target.checked;
+                                    setDecodeEnabled(newState);
+                                    sendQRConfig(newState);
+                                }}
+                            />
+                            <span
+                                className={css({
+                                    fontSize: "sm",
+                                    fontWeight: "medium",
+                                })}
+                            >
+                                Enable QR decoding
+                            </span>
+                        </div>
+
+                        <div
+                            className={css({
+                                flex: 1,
+                                overflowY: "auto",
+                                paddingRight: "xs",
+                                minHeight: 0,
+                            })}
+                        >
+                            <TilingControl initialParams={tilingParams} />
+                        </div>
                     </div>
                 )}
 

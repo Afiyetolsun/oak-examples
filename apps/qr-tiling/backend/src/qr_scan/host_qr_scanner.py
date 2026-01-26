@@ -28,7 +28,8 @@ class QRScanner(BaseHostNode):
         assert isinstance(detections, dai.ImgDetections)
 
         for det in detections.detections:
-            if self._decode_enabled and isinstance(det, dai.ImgDetection):
+            det.labelName = " "
+            if self._decode_enabled:
                 bbox = self._denormalize_bbox(frame, det)
                 decoded_text = self._decode_qr(frame, bbox)
                 det.labelName = decoded_text if decoded_text else " "
@@ -50,6 +51,13 @@ class QRScanner(BaseHostNode):
                 self._last_decoded = text
             return text
         return ""
+
+    def set_decode(self, value: bool) -> None:
+        self._decode_enabled = value
+
+    @property
+    def decode_enabled(self) -> bool:
+        return self._decode_enabled
 
     @staticmethod
     def _denormalize_bbox(frame: np.ndarray, det) -> np.ndarray:

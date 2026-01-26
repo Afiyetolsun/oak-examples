@@ -7,7 +7,7 @@ import numpy as np
 from depthai_nodes.node import BaseHostNode
 
 
-class TileGridVisualizer(BaseHostNode):
+class TileGridOverlay(BaseHostNode):
     """Draws tile grid overlay directly on frames."""
 
     def __init__(self) -> None:
@@ -21,7 +21,7 @@ class TileGridVisualizer(BaseHostNode):
         preview: dai.Node.Output,
         tile_positions: List[Tuple[int, int, int, int]],
         source_size: Tuple[int, int] | None = None,
-    ) -> "TileGridVisualizer":
+    ) -> "TileGridOverlay":
         self.link_args(preview)
         self._tile_positions = tile_positions
         self._source_size = source_size
