@@ -12,6 +12,8 @@ This application demonstrates high-resolution QR code detection using dynamic im
 
 > **Note:** RVC4 standalone mode only.
 
+![](media/QR_tiling.gif)
+
 ______________________________________________________________________
 
 ## Features
