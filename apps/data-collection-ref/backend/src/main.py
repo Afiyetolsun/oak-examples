@@ -35,7 +35,7 @@ def main():
     config = build_configuration(platform, args)
 
     with dai.Pipeline(device) as pipeline:
-        logger.info("Creating pipeline with NEW nodes...")
+        logger.info("Creating pipeline...")
 
         camera_source = pipeline.create(CameraSourceNode).build(cfg=config.video)
         logger.info("CameraSourceNode created")
@@ -76,7 +76,7 @@ def main():
         )
 
         get_config_service = GetAppConfigService(
-            model_state=nn_node.controller.get_model_state,
+            get_model_state=nn_node.controller.get_model_state,
             get_snap_conditions_config=snapping_node.export_snap_conditions_config,
         )
 
