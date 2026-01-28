@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from base_service import BaseService
 from tiling.dynamic_tiling import DynamicTiling
-from tiling.tile_grid_visualizer import TileGridOverlay
+from tiling.tile_grid_overlay import TileGridOverlay
 
 
 class TilingConfigPayload(BaseModel):

@@ -16,7 +16,5 @@ class QRConfigService(BaseService[QRConfigPayload]):
         self._scanner = scanner
 
     def handle_typed(self, payload: QRConfigPayload) -> dict:
-        print(payload.state)
         self._scanner.set_decode(payload.state)
-        print(self._scanner.decode_enabled)
         return {"ok": True}

@@ -57,6 +57,7 @@ class TileGridOverlay(BaseHostNode):
         out_frame.setCvFrame(frame_with_grid, dai.ImgFrame.Type.BGR888p)
         out_frame.setTimestamp(preview.getTimestamp())
         out_frame.setSequenceNum(preview.getSequenceNum())
+        out_frame.setTimestampDevice(preview.getTimestampDevice())
 
         self.out.send(out_frame)
 

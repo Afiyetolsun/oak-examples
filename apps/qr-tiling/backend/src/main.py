@@ -9,7 +9,7 @@ from params_service import CurrentParamsService
 from qr_scan.qr_service import QRConfigService
 from tiling.dynamic_tiling import DynamicTiling
 from qr_scan.host_qr_scanner import QRScanner
-from tiling.tile_grid_visualizer import TileGridOverlay
+from tiling.tile_grid_overlay import TileGridOverlay
 from tiling.tiling_config_service import TilingConfigService
 
 TILING_SIZE = (3840, 2160)
