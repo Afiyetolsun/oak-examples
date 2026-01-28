@@ -16,7 +16,7 @@ class TextualPromptEncoder(BasePromptEncoder):
             config.paths.text_encoder.url,
             config.paths.text_encoder.path,
         )
-        self._offset: str = config.text_offset
+        self._offset: int = config.text_offset
         self.tokenizer_url: str = config.paths.tokenizer.url
         self.tokenizer_path: str = config.paths.tokenizer.path
         self.tokenizer: Tokenizer = None

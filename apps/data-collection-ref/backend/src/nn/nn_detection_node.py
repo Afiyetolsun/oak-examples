@@ -52,8 +52,6 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
     def build(
         self,
         image_source: dai.Node.Output,
-        text_encoder: TextualPromptEncoder,
-        visual_encoder: VisualPromptEncoder,
         cfg_nn: NeuralNetworkConfig,
         cfg_prompts: Box,
     ) -> "NNDetectionNode":
@@ -88,8 +86,8 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
         self.detections = self._det_label_mapper.out
 
         # Prompt encoders
-        self.text_encoder = text_encoder
-        self.visual_encoder = visual_encoder
+        self.text_encoder = TextualPromptEncoder(cfg_prompts)
+        self.visual_encoder = VisualPromptEncoder(cfg_prompts)
 
         # Controller
         self.controller = PromptController(
@@ -102,7 +100,6 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
         )
         self.controller.send_initial_prompts(
             class_names=cfg_prompts.class_names,
-            text_offset=cfg_prompts.text_offset,
             detection_threshold=cfg_prompts.detection_threshold,
         )
 

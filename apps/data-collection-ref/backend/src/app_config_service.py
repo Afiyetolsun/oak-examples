@@ -7,23 +7,24 @@ class GetAppConfigService:
     Read-only service that exports current configuration state to the frontend.
 
     Aggregates state from:
-    - ModelState (classes, confidence threshold)
-    - get_snapping_config() callable (snapping configuration export)
+    - get_model_state() callable (classes, confidence threshold)
+    - get_snap_conditions_config() callable (snapping configuration export)
     """
     def __init__(
         self,
-        model_state: ModelState,
+        get_model_state: Callable[[], ModelState],
         get_snap_conditions_config: Callable[[], Dict[str, Any]],
     ):
-        self._model_state = model_state
+        self._get_model_state = get_model_state
         self._get_snap_conditions_config = get_snap_conditions_config
 
     def handle(self, payload: Any = None) -> Dict[str, Any]:
+        model_state = self._get_model_state()
         return {
             "ok": True,
             "data": {
-                "classes": list(self._model_state.current_classes),
-                "confidence_threshold": float(self._model_state.confidence_threshold),
+                "classes": list(model_state.current_classes),
+                "confidence_threshold": float(model_state.confidence_threshold),
                 "snapping": self._get_snap_conditions_config(),
             },
         }

@@ -23,7 +23,7 @@ class VisualPromptEncoder(BasePromptEncoder):
             config.paths.visual_encoder.url,
             config.paths.visual_encoder.path,
         )
-        self._offset: str = config.visual_offset
+        self._offset: int = config.visual_offset
 
     def extract_embeddings(self, image: np.ndarray, mask_prompt=None) -> np.ndarray:
         self._load_model()

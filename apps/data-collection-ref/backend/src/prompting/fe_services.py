@@ -5,9 +5,6 @@ import numpy as np
 from pydantic import ValidationError
 from typing import Callable, Optional
 
-from nn.prompt_controller import PromptController
-from prompting.encoders.textual_prompt_encoder import TextualPromptEncoder
-from prompting.encoders.visual_prompt_encoder import VisualPromptEncoder
 from prompting.payloads import (
     ClassUpdatePayload,
     ThresholdUpdatePayload,
@@ -21,14 +18,16 @@ class PromptingFEServices:
 
     def __init__(
         self,
-        controller: PromptController,
-        text_encoder: TextualPromptEncoder,
-        visual_encoder: VisualPromptEncoder,
+        update_classes: Callable[[list[str]], None],
+        set_confidence_threshold: Callable[[float], None],
+        apply_visual_prompt_from_image: Callable[[np.ndarray, str], None],
+        apply_visual_prompt_from_mask: Callable[[np.ndarray, np.ndarray, Optional[list[str]]], None],
         get_last_frame: Callable[[], Optional[np.ndarray]],
     ):
-        self._controller = controller
-        self._text = text_encoder
-        self._visual = visual_encoder
+        self._update_classes = update_classes
+        self._set_threshold = set_confidence_threshold
+        self._apply_image = apply_visual_prompt_from_image
+        self._apply_mask = apply_visual_prompt_from_mask
         self._get_last_frame = get_last_frame
 
     def fe_class_update(self, payload: dict) -> dict:
@@ -37,17 +36,8 @@ class PromptingFEServices:
         except ValidationError as e:
             return {"ok": False, "error": e.errors()}
 
-        classes = validated.classes
-        text_embeddings = self._text.extract_embeddings(classes)
-        dummy_image = self._visual.make_dummy()
-
-        self._controller.apply_prompts(
-            image_prompt=dummy_image,
-            text_prompt=text_embeddings,
-            class_names=classes,
-            offset=self._text.offset,
-        )
-        return {"ok": True, "classes": classes}
+        self._update_classes(validated.classes)
+        return {"ok": True, "classes": validated.classes}
 
     def fe_threshold_update(self, payload: dict) -> dict:
         try:
@@ -55,7 +45,7 @@ class PromptingFEServices:
         except ValidationError as e:
             return {"ok": False, "error": e.errors()}
 
-        self._controller.set_confidence_threshold(validated.threshold)
+        self._set_threshold(validated.threshold)
         return {"ok": True, "threshold": float(validated.threshold)}
 
     def fe_image_upload(self, payload: dict) -> dict:
@@ -69,15 +59,7 @@ class PromptingFEServices:
         if image is None:
             return {"ok": False, "error": "Invalid image data"}
 
-        image_embeddings = self._visual.extract_embeddings(image)
-        dummy_text = self._text.make_dummy()
-
-        self._controller.apply_prompts(
-            image_prompt=image_embeddings,
-            text_prompt=dummy_text,
-            class_names=[class_name],
-            offset=self._visual.offset,
-        )
+        self._apply_image(image, class_name)
         return {"ok": True, "classes": class_name}
 
     def fe_bbox_prompt(self, payload: dict) -> dict:
@@ -94,16 +76,8 @@ class PromptingFEServices:
         if mask is None:
             return {"ok": False, "error": "Invalid bbox"}
 
-        image_embeddings = self._visual.extract_embeddings(image, mask)
-        dummy_text = self._text.make_dummy()
-
         class_names = ["Selected Region"]
-        self._controller.apply_prompts(
-            image_prompt=image_embeddings,
-            text_prompt=dummy_text,
-            class_names=class_names,
-            offset=self._visual.offset,
-        )
+        self._apply_mask(image, mask, class_names)
         return {"ok": True, "classes": class_names}
 
     @staticmethod

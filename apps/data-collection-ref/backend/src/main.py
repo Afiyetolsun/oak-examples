@@ -13,8 +13,6 @@ from tracking.tracking_node import TrackingNode
 from snapping.snapping_node import SnappingNode
 
 from prompting.frame_cache_node import FrameCacheNode
-from prompting.encoders.textual_prompt_encoder import TextualPromptEncoder
-from prompting.encoders.visual_prompt_encoder import VisualPromptEncoder
 from prompting.fe_services import PromptingFEServices
 
 from app_config_service import GetAppConfigService
@@ -42,14 +40,8 @@ def main():
         camera_source = pipeline.create(CameraSourceNode).build(cfg=config.video)
         logger.info("CameraSourceNode created")
 
-        # Encoders used both by the NN controller (initial prompts) and by FE services (runtime updates)
-        text_encoder = TextualPromptEncoder(config.prompts)
-        visual_encoder = VisualPromptEncoder(config.prompts)
-
         nn_node = pipeline.create(NNDetectionNode).build(
             image_source=camera_source.bgr,
-            text_encoder=text_encoder,
-            visual_encoder=visual_encoder,
             cfg_nn=config.nn,
             cfg_prompts=config.prompts,
         )
@@ -76,14 +68,15 @@ def main():
         logger.info("FrameCacheNode created")
 
         prompting_services = PromptingFEServices(
-            controller=nn_node.controller,
-            text_encoder=text_encoder,
-            visual_encoder=visual_encoder,
+            update_classes=nn_node.controller.update_classes,
+            set_confidence_threshold=nn_node.controller.set_confidence_threshold,
+            apply_visual_prompt_from_image=nn_node.controller.apply_visual_prompt_from_image,
+            apply_visual_prompt_from_mask=nn_node.controller.apply_visual_prompt_from_mask,
             get_last_frame=frame_cache_node.get_last_frame,
         )
 
         get_config_service = GetAppConfigService(
-            model_state=nn_node.controller.state,
+            model_state=nn_node.controller.get_model_state,
             get_snap_conditions_config=snapping_node.export_snap_conditions_config,
         )
 
