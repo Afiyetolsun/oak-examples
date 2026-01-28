@@ -25,10 +25,10 @@ class FPSMonitor(BaseHostNode):
         self._last_report_time: float = 0.0
 
     def build(
-            self,
-            input_stream: dai.Node.Output,
-            report_interval_sec: float = 3.0,
-            label: str = "After patcher",
+        self,
+        input_stream: dai.Node.Output,
+        report_interval_sec: float = 3.0,
+        label: str = "After patcher",
     ) -> "FPSMonitor":
         self.link_args(input_stream)
         self._report_interval_sec = report_interval_sec

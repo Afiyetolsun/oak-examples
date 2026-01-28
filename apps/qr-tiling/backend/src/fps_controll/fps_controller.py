@@ -65,14 +65,14 @@ while True:
         self._stable_count: int = 0
 
     def build(
-            self,
-            nn_video: dai.Node.Output,
-            preview: dai.Node.Output,
-            max_fps: int = 30,
-            min_fps: int = 5,
-            drop_threshold: float = 0.9,
-            rise_step: int = 3,
-            stable_feedbacks_needed: int = 3,
+        self,
+        nn_video: dai.Node.Output,
+        preview: dai.Node.Output,
+        max_fps: int = 30,
+        min_fps: int = 5,
+        drop_threshold: float = 0.9,
+        rise_step: int = 3,
+        stable_feedbacks_needed: int = 3,
     ) -> "FPSController":
         self._max_fps = max_fps
         self._min_fps = min_fps
@@ -89,19 +89,14 @@ while True:
 
         self._script.inputs["skip_count"].setBlocking(False)
 
-        print(f"[FPSController] Built with max_fps={max_fps}, min_fps={min_fps}, "
-              f"drop_threshold={drop_threshold}, rise_step={rise_step}, "
-              f"stable_feedbacks_needed={stable_feedbacks_needed}")
-
         return self
 
     def run(self) -> None:
         self._send_skip_count()
-        print(f"[FPSController] Started with target_fps={self._target_fps}")
 
         while self.isRunning():
             feedback = self._feedback_input.get()
-            if hasattr(feedback, 'actual_fps'):
+            if hasattr(feedback, "actual_fps"):
                 self._handle_feedback(feedback.actual_fps)
 
     def _handle_feedback(self, actual_fps: int) -> None:
@@ -130,7 +125,10 @@ while True:
     def _handle_stable_state(self) -> None:
         self._stable_count += 1
 
-        if self._stable_count >= self._stable_feedbacks_needed and self._target_fps < self._max_fps:
+        if (
+            self._stable_count >= self._stable_feedbacks_needed
+            and self._target_fps < self._max_fps
+        ):
             new_target = min(self._max_fps, self._target_fps + self._current_step)
             self._set_target_fps(new_target)
             self._trying_to_rise = True
@@ -146,7 +144,6 @@ while True:
         self._skip_count_out.send(buff)
 
     def _stabilize(self, fps: int, step: int, stable_count: int) -> None:
-        print(f"[FPSController] Stabilize: {self._target_fps} -> {fps} (actual={fps})")
         fps = max(self._min_fps, fps)
         self._set_target_fps(fps)
         self._last_stable_fps = fps

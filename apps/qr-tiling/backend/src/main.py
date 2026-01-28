@@ -36,8 +36,7 @@ with dai.Pipeline(device) as pipeline:
     rgb_preview = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
 
     fps_controller = pipeline.create(FPSController).build(
-        nn_video = rgb_nn,
-        preview = rgb_preview
+        nn_video=rgb_nn, preview=rgb_preview
     )
 
     dynamic_tiling = pipeline.create(DynamicTiling).build(
@@ -54,7 +53,10 @@ with dai.Pipeline(device) as pipeline:
     )
 
     patcher = pipeline.create(TilesPatcher).build(
-        img_frames=fps_controller.nn_video_out, nn=nn.out, conf_thresh=0.3, iou_thresh=0.2
+        img_frames=fps_controller.nn_video_out,
+        nn=nn.out,
+        conf_thresh=0.3,
+        iou_thresh=0.2,
     )
 
     scanner = pipeline.create(QRScanner).build(
@@ -85,9 +87,7 @@ with dai.Pipeline(device) as pipeline:
     )
     grid_manip.out.link(encoder.input)
 
-    fps_monitor = pipeline.create(FPSMonitor).build(
-        input_stream = scanner.out
-    )
+    fps_monitor = pipeline.create(FPSMonitor).build(input_stream=scanner.out)
     fps_monitor.out.link(fps_controller.feedback)
 
     visualizer.addTopic("Video", encoder.out, "images")
