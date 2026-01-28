@@ -49,7 +49,7 @@ class TileGridOverlay(BaseHostNode):
             for _ in range(max(len(self._tile_positions), 1))
         ]
 
-    def process(self, preview: dai.ImgFrame) -> None:
+    def process(self, preview: dai.Buffer) -> None:
         frame = preview.getCvFrame()
         frame_with_grid = self._draw_grid(frame)
 

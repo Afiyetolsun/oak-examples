@@ -23,7 +23,7 @@ class QRScanner(BaseHostNode):
         self._decode_enabled = decode_enabled
         return self
 
-    def process(self, preview: dai.ImgFrame, detections: dai.Buffer) -> None:
+    def process(self, preview: dai.Buffer, detections: dai.Buffer) -> None:
         frame = preview.getCvFrame()
         assert isinstance(detections, dai.ImgDetections)
 
@@ -33,6 +33,7 @@ class QRScanner(BaseHostNode):
                 bbox = self._denormalize_bbox(frame, det)
                 decoded_text = self._decode_qr(frame, bbox)
                 det.labelName = decoded_text if decoded_text else " "
+        detections.setSequenceNum(preview.getSequenceNum())
         self.out.send(detections)
 
     def _decode_qr(self, frame: np.ndarray, bbox: np.ndarray) -> str:
@@ -47,7 +48,6 @@ class QRScanner(BaseHostNode):
         if data:
             text = data[0].data.decode("utf-8")
             if text != self._last_decoded:
-                print(f"Decoded QR: {text}")
                 self._last_decoded = text
             return text
         return ""
