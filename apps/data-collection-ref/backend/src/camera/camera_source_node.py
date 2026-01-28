@@ -15,7 +15,7 @@ class CameraSourceNode(dai.node.ThreadedHostNode):
           -> NV12 stream -> VideoEncoder -> H.264
 
     Handles both live camera and file replay sources, exposing:
-      - preview: BGR888i preview stream.
+      - bgr: BGR888istream.
       - encoded: H.264 encoded stream.
 
     """
@@ -30,7 +30,7 @@ class CameraSourceNode(dai.node.ThreadedHostNode):
         self._manip: Optional[dai.node.ImageManip] = None
 
         self._nv12_out: Optional[dai.Node.Output] = None
-        self.preview: Optional[dai.Node.Output] = None
+        self.bgr: Optional[dai.Node.Output] = None
         self.encoded: Optional[dai.Node.Output] = None
 
     def build(self, cfg: VideoConfig) -> "CameraSourceNode":
@@ -50,7 +50,7 @@ class CameraSourceNode(dai.node.ThreadedHostNode):
         self._camera = self.createSubnode(dai.node.Camera)
         self._camera.build()
 
-        self.preview = self._camera.requestOutput(
+        self.bgr = self._camera.requestOutput(
             size=(cfg.width, cfg.height),
             type=dai.ImgFrame.Type.BGR888i,
             fps=cfg.fps,
@@ -78,7 +78,7 @@ class CameraSourceNode(dai.node.ThreadedHostNode):
         self._manip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888i)
         self._replay.out.link(self._manip.inputImage)
 
-        self.preview = self._manip.out
+        self.bgr = self._manip.out
         self._nv12_out = self._replay.out
 
     def _setup_encoder(self, cfg: VideoConfig) -> None:

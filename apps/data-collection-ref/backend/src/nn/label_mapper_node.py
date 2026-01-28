@@ -1,13 +1,21 @@
 import logging
 import depthai as dai
 from depthai_nodes import ImgDetectionsExtended
-from typing import Dict
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
-class AnnotationNode(dai.node.HostNode):
-    def __init__(self, label_encoding: Dict[int, str] = None) -> None:
+class DetectionsLabelMapper(dai.node.HostNode):
+    """
+    Maps numeric class IDs to human-readable names.
+
+    Input:
+      - dai.ImgDetections OR ImgDetectionsExtended
+    Output:
+      - Same message instance, with label name fields populated.
+    """
+    def __init__(self, label_encoding: Optional[Dict[int, str]] = None) -> None:
         super().__init__()
         self._label_encoding = label_encoding if label_encoding is not None else {}
 
@@ -18,25 +26,22 @@ class AnnotationNode(dai.node.HostNode):
             values.
         @type label_encoding: Dict[int, str]
         """
-        if not isinstance(label_encoding, Dict):
+        if not isinstance(label_encoding, dict):
             raise ValueError("label_encoding must be a dictionary.")
         self._label_encoding = label_encoding
 
     def build(
         self,
         detections: dai.Node.Output,
-        label_encoding: Dict[int, str] = None,
-    ) -> "AnnotationNode":
+        label_encoding: Optional[Dict[int, str]] = None,
+    ) -> "DetectionsLabelMapper":
         if label_encoding is not None:
             self.set_label_encoding(label_encoding)
-        # Link detections and reference frame inputs
+
         self.link_args(detections)
         return self
 
-    def process(
-        self,
-        detections_message: dai.Buffer,
-    ) -> None:
+    def process(self, detections_message: dai.Buffer) -> None:
         if isinstance(detections_message, ImgDetectionsExtended):
             for detection in detections_message.detections:
                 detection.label_name = self._label_encoding.get(

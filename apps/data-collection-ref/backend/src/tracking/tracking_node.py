@@ -6,6 +6,7 @@ from config.config_data_classes import TrackingConfig
 class TrackingNode(dai.node.ThreadedHostNode):
     """
     High-level node grouping the object tracking block.
+    Contains a DepthAI ObjectTracker node configured for object tracking.
 
     Exposes:
       - tracklets: dai.Tracklets with tracking IDs.

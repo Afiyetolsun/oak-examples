@@ -1,12 +1,17 @@
 import depthai as dai
 from box import Box
-from typing import Optional
+from typing import Dict, Any
 
 from depthai_nodes.node import SnapsUploader
 
 from snapping.snaps_producer import SnapsProducer
-from snapping.conditions import Condition, ConditionKey, build_conditions
-from snapping.snapping_service import SnappingService
+from snapping.conditions import Condition, ConditionKey, ConditionConfig, build_conditions
+from pydantic import RootModel, ValidationError
+
+
+class SnapPayload(RootModel[Dict[ConditionKey, ConditionConfig]]):
+    """Payload for updating multiple conditions at once."""
+    pass
 
 
 class SnappingNode(dai.node.ThreadedHostNode):
@@ -30,8 +35,6 @@ class SnappingNode(dai.node.ThreadedHostNode):
         self._uploader: SnapsUploader = self.createSubnode(SnapsUploader)
 
         self._conditions: dict[ConditionKey, Condition] = {}
-
-        self.service: Optional[SnappingService] = None
 
     def build(
         self,
@@ -57,24 +60,30 @@ class SnappingNode(dai.node.ThreadedHostNode):
 
         self._uploader.build(self._producer.out)
 
-        self.service = SnappingService(self._conditions)
-
         return self
 
-    def register_service(self, visualizer: dai.RemoteConnection) -> None:
-        """
-        Register snapping service with the visualizer.
+    def fe_update_conditions(self, payload: dict) -> Dict[str, Any]:
+        try:
+            validated = SnapPayload.model_validate(payload)
+        except ValidationError as e:
+            return {"ok": False, "error": e.errors()}
 
-        @param visualizer: RemoteConnection to register services with.
-        """
-        if self.service is None:
-            raise RuntimeError("SnappingNode.build() must be called before register_service()")
-        visualizer.registerService(self.service.name, self.service.handle)
+        any_active = False
+        for key, params in validated.root.items():
+            cond = self._conditions.get(key)
+            if cond is None:
+                continue
+            cond.apply_config(params)
+            any_active = any_active or cond.enabled
 
-    @property
-    def conditions(self) -> dict[ConditionKey, Condition]:
-        """Get conditions dict (for ExportService)."""
-        return self._conditions
+        return {"ok": True, "active": any_active}
+
+    def export_snap_conditions_config(self) -> dict[str, Any]:
+        """Export current snapping state in a FE-friendly dict."""
+        return {
+            "running": any(c.enabled for c in self._conditions.values()),
+            **{k.value: c.export_config() for k, c in self._conditions.items()},
+        }
 
     def run(self) -> None:
         # High-level node: no host-side processing here. Processing happens in the composed subnodes.
