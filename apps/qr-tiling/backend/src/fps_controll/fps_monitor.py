@@ -23,6 +23,8 @@ class FPSMonitor(BaseHostNode):
         self._timestamps: deque = deque()
         self._label: str = "After patcher"
         self._last_report_time: float = 0.0
+        self._start_time: float = 0.0
+        self._warmup_sec: float = 5.0
 
     def build(
         self,
@@ -33,6 +35,7 @@ class FPSMonitor(BaseHostNode):
         self.link_args(input_stream)
         self._report_interval_sec = report_interval_sec
         self._label = label
+        self._start_time = time.monotonic()
         return self
 
     def process(self, msg: dai.Buffer) -> None:
@@ -42,6 +45,9 @@ class FPSMonitor(BaseHostNode):
         cutoff = now - self._report_interval_sec
         while self._timestamps and self._timestamps[0] < cutoff:
             self._timestamps.popleft()
+
+        if now - self._start_time < self._warmup_sec:
+            return
 
         if now - self._last_report_time >= self._report_interval_sec:
             fps = self._calculate_fps()

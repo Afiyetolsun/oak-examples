@@ -3,6 +3,7 @@ import { Streams, useDaiConnection } from "@luxonis/depthai-viewer-common";
 import { TilingControl, TilingParams } from "./TilingControl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotifications } from "./Notifications";
+import { CircleLoader } from "./CircleLoader.tsx";
 
 export type CurrentParamsResponse = {
     tiling: TilingParams;
@@ -99,7 +100,18 @@ function App() {
                 </h1>
 
                 {!paramsLoaded || !tilingParams ? (
-                    <span>Loading tiling configuration…</span>
+                    <div className={css({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 'sm',
+                        height: 'full',
+                        color: 'gray.500'
+                    })}>
+                        <CircleLoader />
+                        <span>Loading tiling configuration…</span>
+                    </div>
                 ) : (
                     <div>
                         <span style={{ fontSize: 16, fontWeight: "bold" }}>

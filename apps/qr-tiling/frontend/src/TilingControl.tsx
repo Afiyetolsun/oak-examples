@@ -1,5 +1,5 @@
 import { Flex, Button, Input, Checkbox } from "@luxonis/common-fe-components";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useDaiConnection } from "@luxonis/depthai-viewer-common";
 
 export type TilingParams = {
@@ -32,6 +32,17 @@ function createDefaultMatrix(rows: number, cols: number): number[][] {
     return matrix;
 }
 
+function matricesEqual(a: number[][], b: number[][]): boolean {
+    if (a.length !== b.length) return false;
+    for (let r = 0; r < a.length; r++) {
+        if (a[r].length !== b[r].length) return false;
+        for (let c = 0; c < a[r].length; c++) {
+            if (a[r][c] !== b[r][c]) return false;
+        }
+    }
+    return true;
+}
+
 function isAdjacentToValue(
     matrix: number[][],
     row: number,
@@ -59,7 +70,7 @@ interface GridMatrixEditorProps {
     rows: number;
     cols: number;
     matrix: number[][];
-    selectedCell: { row: number; col: number } | null;
+    selectedValue: number | null;
     onCellClick: (row: number, col: number) => void;
 }
 
@@ -67,7 +78,7 @@ function GridMatrixEditor({
     rows,
     cols,
     matrix,
-    selectedCell,
+    selectedValue,
     onCellClick,
 }: GridMatrixEditorProps) {
     const valueCounts = new Map<number, number>();
@@ -84,9 +95,7 @@ function GridMatrixEditor({
                 <div key={rowIdx} style={{ display: "flex", gap: 2 }}>
                     {Array.from({ length: cols }).map((_, colIdx) => {
                         const cellValue = matrix[rowIdx]?.[colIdx] ?? 0;
-                        const isSelected =
-                            selectedCell?.row === rowIdx &&
-                            selectedCell?.col === colIdx;
+                        const isSelected = selectedValue === cellValue;
                         const isMerged = (valueCounts.get(cellValue) ?? 0) > 1;
 
                         const color = isMerged
@@ -127,7 +136,6 @@ function GridMatrixEditor({
 export function TilingControl({ initialParams }: TilingControlProps) {
     const connection = useDaiConnection();
 
-    // Initialize directly from props
     const [rows, setRows] = useState(initialParams.rows);
     const [cols, setCols] = useState(initialParams.cols);
     const [overlap, setOverlap] = useState(initialParams.overlap);
@@ -135,16 +143,16 @@ export function TilingControl({ initialParams }: TilingControlProps) {
     const [gridMatrix, setGridMatrix] = useState<number[][]>(
         initialParams.grid_matrix ?? createDefaultMatrix(initialParams.rows, initialParams.cols)
     );
-    const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
-
-    // Track if user changed rows/cols manually
+    const [selectedValue, setSelectedValue] = useState<number | null>(null);
     const [userChangedSize, setUserChangedSize] = useState(false);
 
-    // Reset grid when user changes rows/cols
+    const defaultMatrix = useMemo(() => createDefaultMatrix(rows, cols), [rows, cols]);
+    const isGridModified = !matricesEqual(gridMatrix, defaultMatrix);
+
     useEffect(() => {
         if (userChangedSize) {
             setGridMatrix(createDefaultMatrix(rows, cols));
-            setSelectedCell(null);
+            setSelectedValue(null);
             setUserChangedSize(false);
         }
     }, [rows, cols, userChangedSize]);
@@ -164,21 +172,15 @@ export function TilingControl({ initialParams }: TilingControlProps) {
     };
 
     const handleCellClick = (row: number, col: number) => {
-        if (selectedCell === null) {
-            setSelectedCell({ row, col });
-            return;
-        }
-
-        const selectedValue = gridMatrix[selectedCell.row][selectedCell.col];
         const clickedValue = gridMatrix[row][col];
 
-        if (selectedCell.row === row && selectedCell.col === col) {
-            setSelectedCell(null);
+        if (selectedValue === null) {
+            setSelectedValue(clickedValue);
             return;
         }
 
         if (clickedValue === selectedValue) {
-            setSelectedCell({ row, col });
+            setSelectedValue(null);
             return;
         }
 
@@ -192,7 +194,7 @@ export function TilingControl({ initialParams }: TilingControlProps) {
             );
             setGridMatrix(newMatrix);
         } else {
-            setSelectedCell({ row, col });
+            setSelectedValue(clickedValue);
         }
     };
 
@@ -267,15 +269,16 @@ export function TilingControl({ initialParams }: TilingControlProps) {
                     rows={rows}
                     cols={cols}
                     matrix={gridMatrix}
-                    selectedCell={selectedCell}
+                    selectedValue={selectedValue}
                     onCellClick={handleCellClick}
                 />
 
                 <Button
                     onClick={() => {
                         setGridMatrix(createDefaultMatrix(rows, cols));
-                        setSelectedCell(null);
+                        setSelectedValue(null);
                     }}
+                    disabled={!isGridModified}
                 >
                     Reset Grid
                 </Button>
