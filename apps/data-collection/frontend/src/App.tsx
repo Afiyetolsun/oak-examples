@@ -221,7 +221,7 @@ function App() {
     const timeoutId = setTimeout(() => {
       console.log("[App] Fetching backend configuration...");
       (connection as any).daiConnection?.postToService(
-        "Export Service",
+        "Get App Config Service",
         null,
         (response: any) => {
           if (response === null || response === undefined) {

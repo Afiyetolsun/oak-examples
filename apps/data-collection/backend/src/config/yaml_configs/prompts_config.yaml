@@ -21,9 +21,9 @@ paths:
     path: "tokenizer.json"
 
   text_encoder:
-    url: "https://huggingface.co/Xenova/mobileclip_blt/resolve/main/onnx/text_model.onnx"
+    slug: "luxonis/yoloe-v8-l:mobileclip-textual-hf"
     path: "mobileclip_textual_hf.onnx"
 
   visual_encoder:
-    url: "https://huggingface.co/sokovninn/yoloe-v8l-seg-visual-encoder/resolve/main/yoloe-v8l-seg_visual_encoder.onnx"
+    slug: "luxonis/yoloe-v8-l:yoloe-v8l-seg-visual-encoder"
     path: "yoloe-v8l-seg_visual_encoder.onnx"
