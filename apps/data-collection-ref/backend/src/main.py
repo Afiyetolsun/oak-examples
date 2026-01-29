@@ -1,21 +1,14 @@
-import depthai as dai
 import logging as log
 
-from config.arguments import parse_args
-from config.system_configuration import build_configuration
+import depthai as dai
 
-from camera.camera_source_node import CameraSourceNode
-
-from nn.nn_detection_node import NNDetectionNode
-
-from tracking.tracking_node import TrackingNode
-
-from snapping.snapping_node import SnappingNode
-
-from prompting.frame_cache_node import FrameCacheNode
-from prompting.fe_services import PromptingFEServices
-
+from config import parse_args, build_configuration
 from app_config_service import GetAppConfigService
+from camera import CameraSourceNode
+from nn import NNDetectionNode
+from tracking import build_tracker_node
+from prompting import FrameCacheNode, PromptingFEServices
+from snapping import SnappingNode
 
 log.basicConfig(level=log.INFO)
 logger = log.getLogger(__name__)
@@ -41,43 +34,42 @@ def main():
         logger.info("CameraSourceNode created")
 
         nn_node = pipeline.create(NNDetectionNode).build(
-            image_source=camera_source.bgr,
-            cfg_nn=config.nn,
-            cfg_prompts=config.prompts,
+            input_frame=camera_source.bgr,
+            cfg=config.nn,
         )
         logger.info("NNDetectionNode created")
 
-        tracking_node = pipeline.create(TrackingNode).build(
-            image_source=camera_source.bgr,
-            detections=nn_node.detections,
+        tracker_node = build_tracker_node(
+            pipeline=pipeline,
+            input_frame=camera_source.bgr,
+            input_detections=nn_node.detections,
             cfg=config.tracker,
         )
-        logger.info("TrackingNode created")
+        logger.info("TrackerNode created")
 
         snapping_node = pipeline.create(SnappingNode).build(
-            image_source=camera_source.bgr,
-            detections=nn_node.detections,
-            tracklets=tracking_node.tracklets,
+            input_frame=camera_source.bgr,
+            input_detections=nn_node.detections,
+            input_tracklets=tracker_node.out,
             cfg=config.snaps,
         )
         logger.info("SnappingNode created!")
 
         frame_cache_node = pipeline.create(FrameCacheNode).build(
-            frame=camera_source.bgr,
+            input_frame=camera_source.bgr,
         )
         logger.info("FrameCacheNode created")
 
         prompting_services = PromptingFEServices(
-            update_classes=nn_node.controller.update_classes,
-            set_confidence_threshold=nn_node.controller.set_confidence_threshold,
-            apply_visual_prompt_from_image=nn_node.controller.apply_visual_prompt_from_image,
-            apply_visual_prompt_from_mask=nn_node.controller.apply_visual_prompt_from_mask,
+            update_classes=nn_node.update_classes,
+            update_visual_prompt=nn_node.update_visual_prompt,
+            set_confidence_threshold=nn_node.set_confidence_threshold,
             get_last_frame=frame_cache_node.get_last_frame,
         )
 
         get_config_service = GetAppConfigService(
-            get_model_state=nn_node.controller.get_model_state,
-            get_snap_conditions_config=snapping_node.export_snap_conditions_config,
+            get_nn_state=nn_node.get_state,
+            get_snap_conditions_config=snapping_node.get_snap_conditions_config,
         )
 
         # Visualizer topics

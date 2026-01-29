@@ -1,7 +1,9 @@
 import logging
-import depthai as dai
-from depthai_nodes import ImgDetectionsExtended
 from typing import Dict, Optional
+
+import depthai as dai
+
+from depthai_nodes import ImgDetectionsExtended
 
 logger = logging.getLogger(__name__)
 

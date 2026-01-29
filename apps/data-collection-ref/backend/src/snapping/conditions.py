@@ -2,11 +2,11 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from time import monotonic
 from typing import Any, Dict, List, Optional
+import logging
 
 import depthai as dai
 from box import Box
 from pydantic import BaseModel, Field
-import logging
 
 from snapping.tracklet_analyzer import TrackletAnalyzer
 

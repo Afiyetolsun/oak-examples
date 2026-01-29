@@ -1,13 +1,14 @@
-import depthai as dai
-from box import Box
 from typing import Optional
 
+import depthai as dai
+import numpy as np
+
 from depthai_nodes.node import ParsingNeuralNetwork, ImgDetectionsFilter, ImgDetectionsBridge
-from config.config_data_classes import NeuralNetworkConfig
-from nn.prompt_controller import PromptController
-from nn.label_mapper_node import DetectionsLabelMapper
-from prompting.encoders.textual_prompt_encoder import TextualPromptEncoder
-from prompting.encoders.visual_prompt_encoder import VisualPromptEncoder
+from config import NeuralNetworkConfig
+from .nn_detection_controller import NNDetectionController
+from .label_mapper_node import DetectionsLabelMapper
+from prompting import TextualPromptEncoder
+from prompting import VisualPromptEncoder
 
 
 class NNDetectionNode(dai.node.ThreadedHostNode):
@@ -17,7 +18,7 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
     update detection classes and confidence threshold at runtime.
 
     Internal pipeline:
-        image_source
+        input_frame
           -> ParsingNeuralNetwork
           -> ImgDetectionsFilter (filter by enabled label IDs)
           -> LabelMapperNode (add label names for visualization)
@@ -39,11 +40,11 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
         self._det_label_mapper: DetectionsLabelMapper = self.createSubnode(DetectionsLabelMapper)
 
         # Internal controller
-        self.controller: Optional[PromptController] = None
+        self._controller: Optional[NNDetectionController] = None
 
         # Prompt encoders
-        self.text_encoder: Optional[TextualPromptEncoder] = None
-        self.visual_encoder: Optional[VisualPromptEncoder] = None
+        self._text_encoder: Optional[TextualPromptEncoder] = None
+        self._visual_encoder: Optional[VisualPromptEncoder] = None
 
         # Outputs
         self.detections_extended: Optional[dai.Node.Output] = None
@@ -51,56 +52,55 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
 
     def build(
         self,
-        image_source: dai.Node.Output,
-        cfg_nn: NeuralNetworkConfig,
-        cfg_prompts: Box,
+        input_frame: dai.Node.Output,
+        cfg: NeuralNetworkConfig,
     ) -> "NNDetectionNode":
         """
-        @param image_source: BGR image frames from camera.
+        @param input_frame: BGR image frames from camera.
         @param cfg: Neural network configuration.
         """
         # NN config
-        self._nn.setNNArchive(cfg_nn.model.archive)
-        self._nn.setBackend(cfg_nn.backend_type)
+        self._nn.setNNArchive(cfg.model.archive)
+        self._nn.setBackend(cfg.backend_type)
         self._nn.setBackendProperties({
-            "runtime": cfg_nn.runtime,
-            "performance_profile": cfg_nn.performance_profile
+            "runtime": cfg.runtime,
+            "performance_profile": cfg.performance_profile
         })
-        self._nn.setNumInferenceThreads(cfg_nn.num_inference_threads)
+        self._nn.setNumInferenceThreads(cfg.num_inference_threads)
         self._nn.getParser(0).setConfidenceThreshold(0.0)
 
-        image_source.link(self._nn.inputs["images"])
+        input_frame.link(self._nn.inputs["images"])
 
         # Detection filter
         self._det_filter.build(self._nn.out)
 
-        # Annotation for visualization (ImgDetectionsExtended)
+        # Add label for visualization (ImgDetectionsExtended)
         self._det_label_mapper_extended.build(self._det_filter.out)
         self.detections_extended = self._det_label_mapper_extended.out
 
         # Bridge to convert ImgDetectionsExtended -> dai.ImgDetections
         self._bridge.build(self._det_filter.out)
 
-        # Re-annotate after bridge (until ImgDetectionsBridge fix - it doesn't copy label names)
+        # Re-add label after bridge (until ImgDetectionsBridge fix - it doesn't copy label names)
         self._det_label_mapper.build(self._bridge.out)
         self.detections = self._det_label_mapper.out
 
         # Prompt encoders
-        self.text_encoder = TextualPromptEncoder(cfg_prompts)
-        self.visual_encoder = VisualPromptEncoder(cfg_prompts)
+        self._text_encoder = TextualPromptEncoder(cfg.prompts)
+        self._visual_encoder = VisualPromptEncoder(cfg.prompts)
 
         # Controller
-        self.controller = PromptController(
+        self._controller = NNDetectionController(
             nn=self._nn,
-            text_encoder=self.text_encoder,
-            visual_encoder=self.visual_encoder,
+            text_encoder=self._text_encoder,
+            visual_encoder=self._visual_encoder,
             det_filter=self._det_filter,
             det_label_mappers=[self._det_label_mapper_extended, self._det_label_mapper],
-            precision=cfg_nn.model.precision,
+            precision=cfg.model.precision,
         )
-        self.controller.send_initial_prompts(
-            class_names=cfg_prompts.class_names,
-            detection_threshold=cfg_prompts.detection_threshold,
+        self._controller.send_initial_prompts(
+            class_names=cfg.prompts.class_names,
+            detection_threshold=cfg.prompts.detection_threshold,
         )
 
         return self
@@ -108,3 +108,15 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
     def run(self) -> None:
         # High-level node: no host-side processing here. Processing happens in the composed subnodes.
         pass
+
+    def set_confidence_threshold(self, threshold: float) -> None:
+        self._controller.set_confidence_threshold(threshold)
+
+    def update_classes(self, class_names: list[str]) -> None:
+        self._controller.update_classes(class_names)
+
+    def update_visual_prompt(self, image: np.ndarray, class_names: list[str], mask: Optional[np.ndarray]) -> None:
+        self._controller.update_visual_prompt(image, class_names, mask)
+
+    def get_state(self):
+        return self._controller.get_nn_state()

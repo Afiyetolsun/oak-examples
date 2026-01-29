@@ -2,7 +2,7 @@ from box import Box
 from tokenizers import Tokenizer
 import numpy as np
 
-from prompting.encoders.base_prompt_encoder import BasePromptEncoder
+from .base_prompt_encoder import BasePromptEncoder
 
 
 class TextualPromptEncoder(BasePromptEncoder):

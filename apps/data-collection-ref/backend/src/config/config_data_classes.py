@@ -1,5 +1,7 @@
 from pathlib import Path
 from dataclasses import dataclass
+
+from box import Box
 import depthai as dai
 
 
@@ -32,6 +34,7 @@ class NeuralNetworkConfig:
     runtime: str
     performance_profile: str
     num_inference_threads: int
+    prompts: Box
 
 
 @dataclass

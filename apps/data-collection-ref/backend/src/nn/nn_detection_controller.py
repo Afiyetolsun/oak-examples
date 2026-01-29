@@ -1,24 +1,24 @@
-import numpy as np
-import depthai as dai
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from depthai_nodes.node import ParsingNeuralNetwork, ImgDetectionsFilter
+import numpy as np
+import depthai as dai
 
-from nn.label_mapper_node import DetectionsLabelMapper
-from prompting.encoders.textual_prompt_encoder import TextualPromptEncoder
-from prompting.encoders.visual_prompt_encoder import VisualPromptEncoder
+from depthai_nodes.node import ParsingNeuralNetwork, ImgDetectionsFilter
+from .label_mapper_node import DetectionsLabelMapper
+from prompting import TextualPromptEncoder
+from prompting import VisualPromptEncoder
 
 
 @dataclass
-class ModelState:
+class NNState:
     current_classes: list[str] = field(default_factory=list)
     confidence_threshold: float = 0.0
 
 
-class PromptController:
+class NNDetectionController:
     """
-    Handles sending prompts to the neural network and detection configuration updates.
+    Controls prompt-driven detection configuration at runtime.
 
     Responsibilities:
       - Produces prompt tensors (text/visual)
@@ -44,7 +44,7 @@ class PromptController:
         self._det_label_mappers = det_label_mappers
         self._precision = precision
 
-        self._state = ModelState()
+        self._state = NNState()
 
         # NN input queues
         self._text_q = self._nn.inputs["texts"].createInputQueue()
@@ -78,46 +78,23 @@ class PromptController:
             label_offset=self._text_encoder.offset,
         )
 
-    def apply_visual_prompt_from_image(
+    def update_visual_prompt(
         self,
         image_bgr: np.ndarray,
-        class_name: str,
+        class_names: list[str],
+        mask: Optional[np.ndarray] = None,
     ) -> None:
         """
-        Apply a visual prompt derived from an uploaded image.
-        Uses visual_encoder.offset internally.
+        Update visual prompt from an image.
+        If a mask is provided, it is used to extract embeddings from the masked region.
         """
-        image_embeddings = self._visual_encoder.extract_embeddings(image_bgr)
-        dummy_text = self._text_encoder.make_dummy()
-
-        self._apply_embedded_prompts(
-            image_prompt=image_embeddings,
-            text_prompt=dummy_text,
-            class_names=[class_name],
-            label_offset=self._visual_encoder.offset,
-        )
-
-    def apply_visual_prompt_from_mask(
-        self,
-        image_bgr: np.ndarray,
-        mask: np.ndarray,
-        class_names: Optional[list[str]] = None,
-    ) -> None:
-        """
-        Apply a visual prompt derived from an image mask (e.g., bbox selection).
-        Uses visual_encoder.offset internally.
-
-        By default, uses 'Selected Region' as class label shown in the UI.
-        """
-        names = class_names if class_names is not None else ["Selected Region"]
-
         image_embeddings = self._visual_encoder.extract_embeddings(image_bgr, mask)
         dummy_text = self._text_encoder.make_dummy()
 
         self._apply_embedded_prompts(
             image_prompt=image_embeddings,
             text_prompt=dummy_text,
-            class_names=names,
+            class_names=class_names,
             label_offset=self._visual_encoder.offset,
         )
 
@@ -126,8 +103,8 @@ class PromptController:
         self._parser.setConfidenceThreshold(t)
         self._state.confidence_threshold = t
 
-    def get_model_state(self) -> ModelState:
-        return ModelState(
+    def get_nn_state(self) -> NNState:
+        return NNState(
             current_classes=list(self._state.current_classes),
             confidence_threshold=float(self._state.confidence_threshold),
         )

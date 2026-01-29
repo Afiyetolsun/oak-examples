@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional
+
 import depthai as dai
 
 from config.config_data_classes import VideoConfig

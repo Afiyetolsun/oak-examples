@@ -1,8 +1,8 @@
+from box import Box
 import cv2
 import numpy as np
-from box import Box
 
-from prompting.encoders.base_prompt_encoder import BasePromptEncoder
+from .base_prompt_encoder import BasePromptEncoder
 
 
 class VisualPromptEncoder(BasePromptEncoder):

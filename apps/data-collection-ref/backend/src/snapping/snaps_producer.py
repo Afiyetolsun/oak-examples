@@ -1,9 +1,10 @@
-import depthai as dai
+import logging as log
 import time
 
-from snapping.conditions import ConditionKey, Condition
+import depthai as dai
+
 from depthai_nodes.message import SnapData
-import logging as log
+from .conditions import ConditionKey, Condition
 
 
 class SnapsProducer(dai.node.HostNode):

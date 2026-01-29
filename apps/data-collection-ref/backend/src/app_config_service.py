@@ -1,5 +1,6 @@
 from typing import Any, Dict, Callable
-from nn.prompt_controller import ModelState
+
+from nn import NNState
 
 
 class GetAppConfigService:
@@ -12,19 +13,19 @@ class GetAppConfigService:
     """
     def __init__(
         self,
-        get_model_state: Callable[[], ModelState],
+        get_nn_state: Callable[[], NNState],
         get_snap_conditions_config: Callable[[], Dict[str, Any]],
     ):
-        self._get_model_state = get_model_state
+        self._get_nn_state = get_nn_state
         self._get_snap_conditions_config = get_snap_conditions_config
 
     def handle(self, payload: Any = None) -> Dict[str, Any]:
-        model_state = self._get_model_state()
+        nn_state = self._get_nn_state()
         return {
             "ok": True,
             "data": {
-                "classes": list(model_state.current_classes),
-                "confidence_threshold": float(model_state.confidence_threshold),
+                "classes": list(nn_state.current_classes),
+                "confidence_threshold": float(nn_state.confidence_threshold),
                 "snapping": self._get_snap_conditions_config(),
             },
         }

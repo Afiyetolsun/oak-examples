@@ -1,11 +1,11 @@
-# prompting/fe_services.py
 import base64
+from typing import Callable, Optional
+
 import cv2
 import numpy as np
 from pydantic import ValidationError
-from typing import Callable, Optional
 
-from prompting.payloads import (
+from .payloads import (
     ClassUpdatePayload,
     ThresholdUpdatePayload,
     ImageUploadPayload,
@@ -19,15 +19,13 @@ class PromptingFEServices:
     def __init__(
         self,
         update_classes: Callable[[list[str]], None],
+        update_visual_prompt: Callable[[np.ndarray, list[str], Optional[np.ndarray]], None],
         set_confidence_threshold: Callable[[float], None],
-        apply_visual_prompt_from_image: Callable[[np.ndarray, str], None],
-        apply_visual_prompt_from_mask: Callable[[np.ndarray, np.ndarray, Optional[list[str]]], None],
         get_last_frame: Callable[[], Optional[np.ndarray]],
     ):
         self._update_classes = update_classes
+        self._update_visual_prompt = update_visual_prompt
         self._set_threshold = set_confidence_threshold
-        self._apply_image = apply_visual_prompt_from_image
-        self._apply_mask = apply_visual_prompt_from_mask
         self._get_last_frame = get_last_frame
 
     def fe_class_update(self, payload: dict) -> dict:
@@ -59,7 +57,7 @@ class PromptingFEServices:
         if image is None:
             return {"ok": False, "error": "Invalid image data"}
 
-        self._apply_image(image, class_name)
+        self._update_visual_prompt(image, [class_name], None)
         return {"ok": True, "classes": class_name}
 
     def fe_bbox_prompt(self, payload: dict) -> dict:
@@ -76,9 +74,8 @@ class PromptingFEServices:
         if mask is None:
             return {"ok": False, "error": "Invalid bbox"}
 
-        class_names = ["Selected Region"]
-        self._apply_mask(image, mask, class_names)
-        return {"ok": True, "classes": class_names}
+        self._update_visual_prompt(image, ["Selected Region"], mask)
+        return {"ok": True, "classes": ["Selected Region"]}
 
     @staticmethod
     def _make_bbox_mask(image: np.ndarray, bbox: BBoxPromptPayload) -> np.ndarray | None:

@@ -1,11 +1,11 @@
 import os
 from abc import ABC, abstractmethod
-from onnxruntime import InferenceSession
-import numpy as np
-import requests
 from pathlib import Path
 
 from box import Box
+from onnxruntime import InferenceSession
+import numpy as np
+import requests
 
 
 class BasePromptEncoder(ABC):

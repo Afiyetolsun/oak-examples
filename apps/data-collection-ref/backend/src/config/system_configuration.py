@@ -1,11 +1,12 @@
 
-import depthai as dai
 from dataclasses import dataclass
 from pathlib import Path
 from argparse import Namespace
 
-from config.config_data_classes import ModelInfo, VideoConfig, NeuralNetworkConfig, TrackingConfig
 from box import Box
+import depthai as dai
+
+from .config_data_classes import ModelInfo, VideoConfig, NeuralNetworkConfig, TrackingConfig
 
 
 @dataclass
@@ -14,7 +15,6 @@ class SystemConfig:
     video: VideoConfig
     nn: NeuralNetworkConfig
     tracker: TrackingConfig
-    prompts: Box
     snaps: Box
 
 
@@ -41,6 +41,7 @@ def build_configuration(platform: str, args: Namespace) -> SystemConfig:
         runtime=b.runtime,
         performance_profile=b.performance_profile,
         num_inference_threads=b.inference_threads,
+        prompts=yaml.prompts,
     )
 
     # Tracking config
@@ -57,7 +58,6 @@ def build_configuration(platform: str, args: Namespace) -> SystemConfig:
         video=video,
         nn=nn,
         tracker=tracker,
-        prompts=yaml.prompts,
         snaps=yaml.conditions,
     )
 

@@ -10,13 +10,13 @@ class FrameCacheNode(dai.node.HostNode):
         super().__init__()
         self._last_frame: np.ndarray | None = None
 
-    def build(self, frame: dai.Node.Output) -> "FrameCacheNode":
-        self.link_args(frame)
+    def build(self, input_frame: dai.Node.Output) -> "FrameCacheNode":
+        self.link_args(input_frame)
         return self
 
-    def process(self, frame: dai.ImgFrame) -> dai.ImgFrame:
-        self._last_frame = frame.getCvFrame()
-        return frame
+    def process(self, input_frame: dai.ImgFrame) -> dai.ImgFrame:
+        self._last_frame = input_frame.getCvFrame()
+        return input_frame
 
     def get_last_frame(self) -> np.ndarray | None:
         return self._last_frame

@@ -1,12 +1,12 @@
-import depthai as dai
-from box import Box
 from typing import Dict, Any
 
-from depthai_nodes.node import SnapsUploader
-
-from snapping.snaps_producer import SnapsProducer
-from snapping.conditions import Condition, ConditionKey, ConditionConfig, build_conditions
+from box import Box
+import depthai as dai
 from pydantic import RootModel, ValidationError
+
+from depthai_nodes.node import SnapsUploader
+from .snaps_producer import SnapsProducer
+from .conditions import Condition, ConditionKey, ConditionConfig, build_conditions
 
 
 class SnapPayload(RootModel[Dict[ConditionKey, ConditionConfig]]):
@@ -38,24 +38,24 @@ class SnappingNode(dai.node.ThreadedHostNode):
 
     def build(
         self,
-        image_source: dai.Node.Output,
-        detections: dai.Node.Output,
-        tracklets: dai.Node.Output,
+        input_frame: dai.Node.Output,
+        input_detections: dai.Node.Output,
+        input_tracklets: dai.Node.Output,
         cfg: Box,
     ) -> "SnappingNode":
         """
-        @param image_source: BGR frames from camera.
-        @param detections: dai.ImgDetections from detection node.
-        @param tracklets: Tracklets output from tracking node.
+        @param input_frame: BGR frames from camera.
+        @param input_detections: dai.ImgDetections from detection node.
+        @param input_tracklets: Tracklets output from tracking node.
         @param cfg: Snapping configuration (conditions, cooldown, etc.)
         """
         self._conditions = build_conditions(cfg)
 
         self._producer.build(
-            frame=image_source,
+            frame=input_frame,
             conditions=self._conditions,
-            detections=detections,
-            tracklets=tracklets,
+            detections=input_detections,
+            tracklets=input_tracklets,
         )
 
         self._uploader.build(self._producer.out)
@@ -78,7 +78,7 @@ class SnappingNode(dai.node.ThreadedHostNode):
 
         return {"ok": True, "active": any_active}
 
-    def export_snap_conditions_config(self) -> dict[str, Any]:
+    def get_snap_conditions_config(self) -> dict[str, Any]:
         """Export current snapping state in a FE-friendly dict."""
         return {
             "running": any(c.enabled for c in self._conditions.values()),
