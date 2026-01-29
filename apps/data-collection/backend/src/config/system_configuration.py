@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from pathlib import Path
 from argparse import Namespace
@@ -6,12 +5,18 @@ from argparse import Namespace
 from box import Box
 import depthai as dai
 
-from .config_data_classes import ModelInfo, VideoConfig, NeuralNetworkConfig, TrackingConfig
+from .config_data_classes import (
+    ModelInfo,
+    VideoConfig,
+    NeuralNetworkConfig,
+    TrackingConfig,
+)
 
 
 @dataclass
 class SystemConfig:
     """All configuration for the pipeline."""
+
     video: VideoConfig
     nn: NeuralNetworkConfig
     tracker: TrackingConfig
@@ -69,12 +74,14 @@ def _load_yamls(base: Path) -> Box:
             raise FileNotFoundError(f"Missing YAML: {path}")
         return Box.from_yaml(filename=path)
 
-    return Box({
-        "nn": safe_load("nn_config.yaml"),
-        "video": safe_load("visual_constants.yaml"),
-        "conditions": safe_load("conditions.yaml"),
-        "prompts": safe_load("prompts_config.yaml"),
-    })
+    return Box(
+        {
+            "nn": safe_load("nn_config.yaml"),
+            "video": safe_load("visual_constants.yaml"),
+            "conditions": safe_load("conditions.yaml"),
+            "prompts": safe_load("prompts_config.yaml"),
+        }
+    )
 
 
 def _load_model(platform: str, precision: str) -> ModelInfo:

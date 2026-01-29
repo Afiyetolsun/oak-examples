@@ -31,7 +31,9 @@ class BasePromptEncoder(ABC):
 
     def _load_model(self) -> None:
         """Download from HubAI and initialize the ONNX model."""
-        path = self._download_from_hubai(self._encoder_model_slug, self._encoder_model_path)
+        path = self._download_from_hubai(
+            self._encoder_model_slug, self._encoder_model_path
+        )
         self._session = InferenceSession(path)
 
     @abstractmethod
@@ -90,7 +92,11 @@ class BasePromptEncoder(ABC):
 
         variant_res = requests.get(
             f"{HUBAI_API_BASE}/modelVersions",
-            params={"model_id": model_id, "variant_slug": model_variant_slug, "is_public": True},
+            params={
+                "model_id": model_id,
+                "variant_slug": model_variant_slug,
+                "is_public": True,
+            },
         )
         model_variant_id = variant_res.json()[0]["id"]
 

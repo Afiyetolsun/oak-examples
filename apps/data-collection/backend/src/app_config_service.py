@@ -11,6 +11,7 @@ class GetAppConfigService:
     - get_model_state() callable (classes, confidence threshold)
     - get_snap_conditions_config() callable (snapping configuration export)
     """
+
     def __init__(
         self,
         get_nn_state: Callable[[], NNState],

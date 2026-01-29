@@ -8,6 +8,7 @@ import depthai as dai
 @dataclass
 class ModelInfo:
     """Model metadata from DepthAI zoo."""
+
     yaml_path: Path
     width: int
     height: int
@@ -19,6 +20,7 @@ class ModelInfo:
 @dataclass
 class VideoConfig:
     """Config for CameraSourceNode."""
+
     resolution: list[int]
     fps: int
     media_path: str
@@ -29,6 +31,7 @@ class VideoConfig:
 @dataclass
 class NeuralNetworkConfig:
     """Config for NNDetectionNode."""
+
     model: ModelInfo
     backend_type: str
     runtime: str
@@ -40,6 +43,7 @@ class NeuralNetworkConfig:
 @dataclass
 class TrackingConfig:
     """Config for TrackingNode."""
+
     track_per_class: bool
     birth_threshold: int
     max_lifespan: int

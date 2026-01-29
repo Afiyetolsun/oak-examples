@@ -3,7 +3,11 @@ from typing import Optional
 import depthai as dai
 import numpy as np
 
-from depthai_nodes.node import ParsingNeuralNetwork, ImgDetectionsFilter, ImgDetectionsBridge
+from depthai_nodes.node import (
+    ParsingNeuralNetwork,
+    ImgDetectionsFilter,
+    ImgDetectionsBridge,
+)
 from config import NeuralNetworkConfig
 from .nn_detection_controller import NNDetectionController
 from .label_mapper_node import DetectionsLabelMapper
@@ -30,14 +34,19 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
       - detections: dai.ImgDetections with label names (for snapping)
       - controller: PromptController for dynamic prompt updates (classes, confidence threshold)
     """
+
     def __init__(self) -> None:
         super().__init__()
 
         self._nn: ParsingNeuralNetwork = self.createSubnode(ParsingNeuralNetwork)
         self._det_filter: ImgDetectionsFilter = self.createSubnode(ImgDetectionsFilter)
         self._bridge: ImgDetectionsBridge = self.createSubnode(ImgDetectionsBridge)
-        self._det_label_mapper_extended: DetectionsLabelMapper = self.createSubnode(DetectionsLabelMapper)
-        self._det_label_mapper: DetectionsLabelMapper = self.createSubnode(DetectionsLabelMapper)
+        self._det_label_mapper_extended: DetectionsLabelMapper = self.createSubnode(
+            DetectionsLabelMapper
+        )
+        self._det_label_mapper: DetectionsLabelMapper = self.createSubnode(
+            DetectionsLabelMapper
+        )
 
         # Internal controller
         self._controller: Optional[NNDetectionController] = None
@@ -62,10 +71,9 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
         # NN config
         self._nn.setNNArchive(cfg.model.archive)
         self._nn.setBackend(cfg.backend_type)
-        self._nn.setBackendProperties({
-            "runtime": cfg.runtime,
-            "performance_profile": cfg.performance_profile
-        })
+        self._nn.setBackendProperties(
+            {"runtime": cfg.runtime, "performance_profile": cfg.performance_profile}
+        )
         self._nn.setNumInferenceThreads(cfg.num_inference_threads)
         self._nn.getParser(0).setConfidenceThreshold(0.0)
 
@@ -115,7 +123,9 @@ class NNDetectionNode(dai.node.ThreadedHostNode):
     def update_classes(self, class_names: list[str]) -> None:
         self._controller.update_classes(class_names)
 
-    def update_visual_prompt(self, image: np.ndarray, class_names: list[str], mask: Optional[np.ndarray]) -> None:
+    def update_visual_prompt(
+        self, image: np.ndarray, class_names: list[str], mask: Optional[np.ndarray]
+    ) -> None:
         self._controller.update_visual_prompt(image, class_names, mask)
 
     def get_state(self):

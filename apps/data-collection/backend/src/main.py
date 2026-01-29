@@ -77,11 +77,21 @@ def main():
         visualizer.addTopic("Annotations", nn_node.detections_extended)
 
         # Register FE services
-        visualizer.registerService("Class Update Service", prompting_services.fe_class_update)
-        visualizer.registerService("Threshold Update Service", prompting_services.fe_threshold_update)
-        visualizer.registerService("Image Upload Service", prompting_services.fe_image_upload)
-        visualizer.registerService("BBox Prompt Service", prompting_services.fe_bbox_prompt)
-        visualizer.registerService("Snap Collection Service", snapping_node.fe_update_conditions)
+        visualizer.registerService(
+            "Class Update Service", prompting_services.fe_class_update
+        )
+        visualizer.registerService(
+            "Threshold Update Service", prompting_services.fe_threshold_update
+        )
+        visualizer.registerService(
+            "Image Upload Service", prompting_services.fe_image_upload
+        )
+        visualizer.registerService(
+            "BBox Prompt Service", prompting_services.fe_bbox_prompt
+        )
+        visualizer.registerService(
+            "Snap Collection Service", snapping_node.fe_update_conditions
+        )
         visualizer.registerService("Get App Config Service", get_config_service.handle)
         logger.info("FE services registered!")
 

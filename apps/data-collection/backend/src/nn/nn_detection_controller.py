@@ -116,7 +116,9 @@ class NNDetectionController:
         return dai.TensorInfo.DataType.U8
 
     @staticmethod
-    def _make_nn_data(tensor_name: str, data: np.ndarray, dtype: dai.TensorInfo.DataType) -> dai.NNData:
+    def _make_nn_data(
+        tensor_name: str, data: np.ndarray, dtype: dai.TensorInfo.DataType
+    ) -> dai.NNData:
         msg = dai.NNData()
         msg.addTensor(tensor_name, data, dataType=dtype)
         return msg
@@ -129,7 +131,9 @@ class NNDetectionController:
         if label_offset < 0:
             raise ValueError("label_offset must be >= 0")
 
-        self._det_filter.setLabels(labels=list(range(label_offset, label_offset + len(label_names))), keep=True)
+        self._det_filter.setLabels(
+            labels=list(range(label_offset, label_offset + len(label_names))), keep=True
+        )
 
         encoding = {label_offset + k: v for k, v in enumerate(label_names)}
         for label_mapper in self._det_label_mappers:

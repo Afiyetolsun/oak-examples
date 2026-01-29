@@ -11,6 +11,7 @@ from .conditions import Condition, ConditionKey, ConditionConfig, build_conditio
 
 class SnapPayload(RootModel[Dict[ConditionKey, ConditionConfig]]):
     """Payload for updating multiple conditions at once."""
+
     pass
 
 

@@ -19,7 +19,9 @@ class PromptingFEServices:
     def __init__(
         self,
         update_classes: Callable[[list[str]], None],
-        update_visual_prompt: Callable[[np.ndarray, list[str], Optional[np.ndarray]], None],
+        update_visual_prompt: Callable[
+            [np.ndarray, list[str], Optional[np.ndarray]], None
+        ],
         set_confidence_threshold: Callable[[float], None],
         get_last_frame: Callable[[], Optional[np.ndarray]],
     ):
@@ -78,7 +80,9 @@ class PromptingFEServices:
         return {"ok": True, "classes": ["Selected Region"]}
 
     @staticmethod
-    def _make_bbox_mask(image: np.ndarray, bbox: BBoxPromptPayload) -> np.ndarray | None:
+    def _make_bbox_mask(
+        image: np.ndarray, bbox: BBoxPromptPayload
+    ) -> np.ndarray | None:
         H, W = image.shape[:2]
         x0 = int(bbox.x * W)
         y0 = int(bbox.y * H)

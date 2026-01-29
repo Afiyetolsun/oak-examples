@@ -17,6 +17,7 @@ class DetectionsLabelMapper(dai.node.HostNode):
     Output:
       - Same message instance, with label name fields populated.
     """
+
     def __init__(self, label_encoding: Optional[Dict[int, str]] = None) -> None:
         super().__init__()
         self._label_encoding = label_encoding if label_encoding is not None else {}

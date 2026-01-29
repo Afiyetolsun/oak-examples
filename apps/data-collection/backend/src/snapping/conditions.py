@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class ConditionKey(str, Enum):
     """Unique identifiers for snapping conditions."""
+
     TIMED = "timed"
     NO_DETECTIONS = "noDetections"
     LOW_CONFIDENCE = "lowConfidence"
@@ -23,6 +24,7 @@ class ConditionKey(str, Enum):
 
 class ConditionConfig(BaseModel):
     """Configuration for a single snapping condition (YAML/FE payload)."""
+
     enabled: bool = Field(default=True)
     cooldown: Optional[float] = Field(default=None, ge=0.0)
     threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
@@ -102,7 +104,9 @@ class TimedCondition(Condition):
 
     KEY = ConditionKey.TIMED
 
-    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
+    def __init__(
+        self, name: str, default_cooldown: float, tags: Optional[List[str]] = None
+    ):
         super().__init__(name, default_cooldown, tags or [])
 
     def should_trigger(self, detections: list, tracklets: dai.Tracklets) -> bool:
@@ -120,7 +124,9 @@ class NoDetectionsCondition(Condition):
 
     KEY = ConditionKey.NO_DETECTIONS
 
-    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
+    def __init__(
+        self, name: str, default_cooldown: float, tags: Optional[List[str]] = None
+    ):
         super().__init__(name, default_cooldown, tags or [])
 
     def should_trigger(self, detections: list, tracklets: dai.Tracklets) -> bool:
@@ -139,7 +145,9 @@ class LowConfidenceCondition(Condition):
 
     KEY = ConditionKey.LOW_CONFIDENCE
 
-    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
+    def __init__(
+        self, name: str, default_cooldown: float, tags: Optional[List[str]] = None
+    ):
         super().__init__(name, default_cooldown, tags or [])
         self.threshold: float = 0.3
         self.last_lowest: float = 0.0
@@ -181,7 +189,9 @@ class LostMidCondition(Condition):
 
     KEY = ConditionKey.LOST_MID
 
-    def __init__(self, name: str, default_cooldown: float, tags: Optional[List[str]] = None):
+    def __init__(
+        self, name: str, default_cooldown: float, tags: Optional[List[str]] = None
+    ):
         super().__init__(name, default_cooldown, tags or [])
         self.margin: float = 0.2
         self.prev_tracked: Dict[int, bool] = {}
@@ -205,7 +215,10 @@ class LostMidCondition(Condition):
                 rc = tr.center_area()
                 if rc is not None:
                     cx, cy, _ = rc
-                    if self.margin <= cx <= 1 - self.margin and self.margin <= cy <= 1 - self.margin:
+                    if (
+                        self.margin <= cx <= 1 - self.margin
+                        and self.margin <= cy <= 1 - self.margin
+                    ):
                         triggered = True
 
             tr.update_state(self.prev_tracked)
