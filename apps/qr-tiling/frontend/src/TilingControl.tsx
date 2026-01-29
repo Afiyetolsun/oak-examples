@@ -138,6 +138,8 @@ export function TilingControl({ initialParams }: TilingControlProps) {
 
     const [rows, setRows] = useState(initialParams.rows);
     const [cols, setCols] = useState(initialParams.cols);
+    const [rowsInput, setRowsInput] = useState(String(initialParams.rows));
+    const [colsInput, setColsInput] = useState(String(initialParams.cols));
     const [overlap, setOverlap] = useState(initialParams.overlap);
     const [globalDetection, setGlobalDetection] = useState(initialParams.global_detection);
     const [gridMatrix, setGridMatrix] = useState<number[][]>(
@@ -169,6 +171,18 @@ export function TilingControl({ initialParams }: TilingControlProps) {
             setUserChangedSize(true);
             setCols(newCols);
         }
+    };
+
+    const handleRowsBlur = () => {
+        const value = Math.max(1, Math.min(8, parseInt(rowsInput) || 1));
+        setRowsInput(String(value));
+        handleRowsChange(value);
+    };
+
+    const handleColsBlur = () => {
+        const value = Math.max(1, Math.min(8, parseInt(colsInput) || 1));
+        setColsInput(String(value));
+        handleColsChange(value);
     };
 
     const handleCellClick = (row: number, col: number) => {
@@ -223,24 +237,20 @@ export function TilingControl({ initialParams }: TilingControlProps) {
                 <span>Rows:</span>
                 <Input
                     type="number"
-                    value={rows}
-                    onChange={(e) =>
-                        handleRowsChange(
-                            Math.max(1, Math.min(8, parseInt(e.target.value) || 1))
-                        )
-                    }
+                    value={rowsInput}
+                    onChange={(e) => setRowsInput(e.target.value)}
+                    onBlur={handleRowsBlur}
+                    onFocus={(e) => e.target.select()}
                     style={{ width: 60 }}
                 />
 
                 <span>Cols:</span>
                 <Input
                     type="number"
-                    value={cols}
-                    onChange={(e) =>
-                        handleColsChange(
-                            Math.max(1, Math.min(8, parseInt(e.target.value) || 1))
-                        )
-                    }
+                    value={colsInput}
+                    onChange={(e) => setColsInput(e.target.value)}
+                    onBlur={handleColsBlur}
+                    onFocus={(e) => e.target.select()}
                     style={{ width: 60 }}
                 />
             </Flex>
