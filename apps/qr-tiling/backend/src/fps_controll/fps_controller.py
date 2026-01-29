@@ -5,13 +5,6 @@ import numpy as np
 class FPSController(dai.node.ThreadedHostNode):
     """
     Controls frame rate for two synchronized streams using a Script node on device.
-
-    Automatically adjusts FPS based on pipeline throughput feedback:
-    - Drops FPS when pipeline can't keep up
-    - Rises FPS with exponential steps (2, 4, 6, 8...)
-    - On success: immediately try higher
-    - On partial: set to actual-1, cooldown
-    - On fail: drop to actual, cooldown
     """
 
     SCRIPT_CONTENT = """
@@ -42,7 +35,7 @@ class FPSController(dai.node.ThreadedHostNode):
         self._script = self._pipeline.create(dai.node.Script)
         self._script.setScript(self.SCRIPT_CONTENT)
 
-        self._target_fps_out = self.createOutput()
+        self._fps_out = self.createOutput()
         self._feedback_input = self.createInput()
 
         self._output_fps: int = 30
@@ -76,7 +69,7 @@ class FPSController(dai.node.ThreadedHostNode):
 
         nn_video.link(self._script.inputs["nn_video"])
         preview.link(self._script.inputs["preview"])
-        self._target_fps_out.link(self._script.inputs["target_fps"])
+        self._fps_out.link(self._script.inputs["target_fps"])
 
         self._script.inputs["target_fps"].setBlocking(False)
 
@@ -110,9 +103,9 @@ class FPSController(dai.node.ThreadedHostNode):
         if actual_fps >= self._output_fps:
             self._last_stable_fps = self._output_fps
             self._current_step += self._rise_step
-            new_target = min(self._max_fps, self._output_fps + self._current_step)
-            if new_target > self._output_fps:
-                self._update_script_config(new_target)
+            new_fps = min(self._max_fps, self._output_fps + self._current_step)
+            if new_fps > self._output_fps:
+                self._update_script_config(new_fps)
                 self._trying_to_rise = True
             else:
                 self._stable_count = self._feedbacks_to_rise
@@ -138,15 +131,15 @@ class FPSController(dai.node.ThreadedHostNode):
             self._stable_count >= self._feedbacks_to_rise
             and self._output_fps < self._max_fps
         ):
-            new_target = min(self._max_fps, self._output_fps + self._current_step)
-            self._update_script_config(new_target)
+            new_fps = min(self._max_fps, self._output_fps + self._current_step)
+            self._update_script_config(new_fps)
             self._trying_to_rise = True
 
     def _update_script_config(self, fps: int) -> None:
         self._output_fps = fps
         buff = dai.Buffer()
         buff.setData(np.array([np.uint8(self._output_fps)]))
-        self._target_fps_out.send(buff)
+        self._fps_out.send(buff)
 
     @property
     def nn_video_out(self) -> dai.Node.Output:
