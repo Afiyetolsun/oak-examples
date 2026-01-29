@@ -102,7 +102,6 @@ with dai.Pipeline(device) as pipeline:
     params_service = CurrentParamsService(
         dynamic_tiling=dynamic_tiling, qr_scanner=scanner
     )
-
     visualizer.registerService(params_service.NAME, params_service)
 
     print("Pipeline created.")

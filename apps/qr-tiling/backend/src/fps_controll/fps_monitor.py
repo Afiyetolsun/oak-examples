@@ -21,20 +21,17 @@ class FPSMonitor(BaseHostNode):
         self._report_interval_sec: float = 3.0
 
         self._timestamps: deque = deque()
-        self._label: str = "After patcher"
         self._last_report_time: float = 0.0
         self._start_time: float = 0.0
-        self._warmup_sec: float = 5.0
+        self._warmup_sec: float = 3.0
 
     def build(
         self,
         input_stream: dai.Node.Output,
-        report_interval_sec: float = 3.0,
-        label: str = "After patcher",
+        report_interval_sec: float = 1,
     ) -> "FPSMonitor":
         self.link_args(input_stream)
         self._report_interval_sec = report_interval_sec
-        self._label = label
         self._start_time = time.monotonic()
         return self
 
