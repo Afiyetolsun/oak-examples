@@ -10,11 +10,13 @@ class TextualPromptEncoder(BasePromptEncoder):
     Handles text tokenization and embedding extraction (CLIP-compatible).
     """
 
-    def __init__(self, config: Box):
+    def __init__(self, config: Box, model_name: str, precision: str):
         super().__init__(
             config,
             config.paths.text_encoder.slug,
             config.paths.text_encoder.path,
+            model_name,
+            precision,
         )
         self._offset: int = config.text_offset
         self.tokenizer_url: str = config.paths.tokenizer.url

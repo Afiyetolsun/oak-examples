@@ -9,19 +9,19 @@ import depthai as dai
 class ModelInfo:
     """Model metadata from DepthAI zoo."""
 
+    name: str
+    precision: str
     yaml_path: Path
     width: int
     height: int
     description: dai.NNModelDescription
     archive: dai.NNArchive
-    precision: str
 
 
 @dataclass
 class VideoConfig:
     """Config for CameraSourceNode."""
 
-    resolution: list[int]
     fps: int
     media_path: str
     width: int
@@ -37,6 +37,7 @@ class NeuralNetworkConfig:
     runtime: str
     performance_profile: str
     num_inference_threads: int
+    confidence_thr: float
     prompts: Box
 
 

@@ -57,11 +57,11 @@ class NNDetectionController:
     def send_initial_prompts(
         self,
         class_names: list[str],
-        detection_threshold: float,
+        confidence_threshold: float,
     ) -> None:
         """Send initial prompts at startup (uses text encoder offset)."""
         self.update_classes(class_names)
-        self.set_confidence_threshold(detection_threshold)
+        self.set_confidence_threshold(confidence_threshold)
 
     def update_classes(self, class_names: list[str]) -> None:
         """

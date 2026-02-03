@@ -26,12 +26,14 @@ class SystemConfig:
 def build_configuration(platform: str, args: Namespace) -> SystemConfig:
     """Build all configuration from CLI args and YAML files."""
     yaml = _load_yamls(Path(__file__).parent / "yaml_configs")
-    model = _load_model(platform, yaml.prompts.precision)
+
+    model_name = yaml.config.nn.name
+    precision = yaml.config.nn.precision
+    model = _load_model(platform, model_name, precision)
 
     # Video config
-    fps = args.fps_limit or yaml.video.default_fps
+    fps = args.fps_limit or yaml.config.video.fps
     video = VideoConfig(
-        resolution=yaml.video.video_resolution,
         fps=fps,
         media_path=args.media_path,
         width=model.width,
@@ -39,18 +41,19 @@ def build_configuration(platform: str, args: Namespace) -> SystemConfig:
     )
 
     # NN config
-    b = yaml.nn.nn_backend
+    b = yaml.config.nn.backend
     nn = NeuralNetworkConfig(
         model=model,
         backend_type=b.type,
         runtime=b.runtime,
         performance_profile=b.performance_profile,
         num_inference_threads=b.inference_threads,
+        confidence_thr=yaml.config.nn.confidence_thr,
         prompts=yaml.prompts,
     )
 
     # Tracking config
-    t = yaml.nn.tracker
+    t = yaml.config.tracker
     tracker = TrackingConfig(
         track_per_class=t.track_per_class,
         birth_threshold=t.birth_threshold,
@@ -76,15 +79,14 @@ def _load_yamls(base: Path) -> Box:
 
     return Box(
         {
-            "nn": safe_load("nn_config.yaml"),
-            "video": safe_load("visual_constants.yaml"),
+            "config": safe_load("config.yaml"),
             "conditions": safe_load("conditions.yaml"),
             "prompts": safe_load("prompts_config.yaml"),
         }
     )
 
 
-def _load_model(platform: str, precision: str) -> ModelInfo:
+def _load_model(platform: str, model_name: str, precision: str) -> ModelInfo:
     models_dir = Path(__file__).parent.parent / "depthai_models"
     yaml_path = models_dir / f"yoloe_v8_l_fp16.{platform}.yaml"
 
@@ -96,4 +98,12 @@ def _load_model(platform: str, precision: str) -> ModelInfo:
     archive = dai.NNArchive(dai.getModelFromZoo(desc))
     w, h = archive.getInputSize()
 
-    return ModelInfo(yaml_path, w, h, desc, archive, precision)
+    return ModelInfo(
+        name=model_name,
+        precision=precision,
+        yaml_path=yaml_path,
+        width=w,
+        height=h,
+        description=desc,
+        archive=archive,
+    )

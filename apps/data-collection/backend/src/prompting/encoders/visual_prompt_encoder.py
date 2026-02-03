@@ -14,14 +14,14 @@ class VisualPromptEncoder(BasePromptEncoder):
     compatible with downstream models.
     """
 
-    def __init__(
-        self,
-        config: Box,
-    ):
+    def __init__(self, config: Box, model_name: str, precision: str):
         super().__init__(
             config,
             config.paths.visual_encoder.slug,
             config.paths.visual_encoder.path,
+            model_name,
+            precision,
+            quant_key=f"{model_name}-image",
         )
         self._offset: int = config.visual_offset
 
