@@ -18,7 +18,7 @@ class FPSMonitor(BaseHostNode):
     def __init__(self) -> None:
         super().__init__()
 
-        self._report_interval_sec: float = 3.0
+        self._report_interval_sec: float = 1.0
 
         self._timestamps: deque = deque()
         self._last_report_time: float = 0.0
@@ -59,7 +59,7 @@ class FPSMonitor(BaseHostNode):
         if time_span <= 0:
             return 0.0
 
-        return len(self._timestamps) / time_span
+        return (len(self._timestamps) - 1) / time_span
 
     def _send_feedback(self, fps: float, ref_msg: dai.Buffer) -> None:
         feedback = FPSFeedback()

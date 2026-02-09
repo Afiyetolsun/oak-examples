@@ -3,14 +3,10 @@ from pathlib import Path
 import depthai as dai
 from depthai_nodes.node import ParsingNeuralNetwork, TilesPatcher
 
-from fps_controll.fps_controller import FPSController
-from fps_controll.fps_monitor import FPSMonitor
+from fps_control import FPSController, FPSMonitor
 from params_service import CurrentParamsService
-from qr_scan.qr_service import QRConfigService
-from tiling.dynamic_tiling import DynamicTiling
-from qr_scan.host_qr_scanner import QRScanner
-from tiling.tile_grid_overlay import TileGridOverlay
-from tiling.tiling_config_service import TilingConfigService
+from qr_scan import QRConfigService, QRScanner
+from tiling import DynamicTiling, TileGridOverlay, TilingConfigService
 
 TILING_SIZE = (3840, 2160)
 OUT_SIZE = (1920, 1080)
@@ -46,10 +42,8 @@ with dai.Pipeline(device) as pipeline:
         resize_mode=dai.ImageManipConfig.ResizeMode.STRETCH,
     )
 
-    nn_input = dynamic_tiling.out
-
     nn = pipeline.create(ParsingNeuralNetwork).build(
-        input=nn_input, nn_source=nn_archive
+        input=dynamic_tiling.out, nn_source=nn_archive
     )
 
     patcher = pipeline.create(TilesPatcher).build(
@@ -64,9 +58,6 @@ with dai.Pipeline(device) as pipeline:
         detections=patcher.out,
     )
 
-    qr_service = QRConfigService(scanner=scanner)
-    visualizer.registerService(qr_service.NAME, qr_service)
-
     grid_overlay = pipeline.create(TileGridOverlay).build(
         preview=fps_controller.preview_out,
         tile_positions=dynamic_tiling.tile_positions,
@@ -77,7 +68,6 @@ with dai.Pipeline(device) as pipeline:
     grid_manip.initialConfig.setOutputSize(OUT_SIZE[0], OUT_SIZE[1])
     grid_manip.initialConfig.setFrameType(dai.ImgFrame.Type.NV12)
     grid_manip.setMaxOutputFrameSize(int(OUT_SIZE[0] * OUT_SIZE[1] * 3))
-
     grid_overlay.out.link(grid_manip.inputImage)
 
     encoder = pipeline.create(dai.node.VideoEncoder)
@@ -94,10 +84,15 @@ with dai.Pipeline(device) as pipeline:
     visualizer.addTopic("Visualizations", scanner.out, "images")
 
     tiling_service = TilingConfigService(
-        dynamic_tiling=dynamic_tiling, grid_visualizer=grid_overlay
+        dynamic_tiling=dynamic_tiling,
+        grid_visualizer=grid_overlay,
+        pipeline=pipeline,
+        fps_controller=fps_controller,
     )
-
     visualizer.registerService(tiling_service.NAME, tiling_service)
+
+    qr_service = QRConfigService(scanner=scanner)
+    visualizer.registerService(qr_service.NAME, qr_service)
 
     params_service = CurrentParamsService(
         dynamic_tiling=dynamic_tiling, qr_scanner=scanner

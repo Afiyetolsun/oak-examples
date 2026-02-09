@@ -173,18 +173,6 @@ export function TilingControl({ initialParams }: TilingControlProps) {
         }
     };
 
-    const handleRowsBlur = () => {
-        const value = Math.max(1, Math.min(8, parseInt(rowsInput) || 1));
-        setRowsInput(String(value));
-        handleRowsChange(value);
-    };
-
-    const handleColsBlur = () => {
-        const value = Math.max(1, Math.min(8, parseInt(colsInput) || 1));
-        setColsInput(String(value));
-        handleColsChange(value);
-    };
-
     const handleCellClick = (row: number, col: number) => {
         const clickedValue = gridMatrix[row][col];
 
@@ -238,9 +226,19 @@ export function TilingControl({ initialParams }: TilingControlProps) {
                 <Input
                     type="number"
                     value={rowsInput}
-                    onChange={(e) => setRowsInput(e.target.value)}
-                    onBlur={handleRowsBlur}
+                    onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === "") { setRowsInput(raw); return; }
+                        const num = parseInt(raw);
+                        if (!isNaN(num)) {
+                            const clamped = Math.max(1, Math.min(8, num));
+                            setRowsInput(String(clamped));
+                            handleRowsChange(clamped);
+                        }
+                    }}
                     onFocus={(e) => e.target.select()}
+                    min={1}
+                    max={8}
                     style={{ width: 60 }}
                 />
 
@@ -248,9 +246,19 @@ export function TilingControl({ initialParams }: TilingControlProps) {
                 <Input
                     type="number"
                     value={colsInput}
-                    onChange={(e) => setColsInput(e.target.value)}
-                    onBlur={handleColsBlur}
+                    onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === "") { setColsInput(raw); return; }
+                        const num = parseInt(raw);
+                        if (!isNaN(num)) {
+                            const clamped = Math.max(1, Math.min(8, num));
+                            setColsInput(String(clamped));
+                            handleColsChange(clamped);
+                        }
+                    }}
                     onFocus={(e) => e.target.select()}
+                    min={1}
+                    max={8}
                     style={{ width: 60 }}
                 />
             </Flex>
@@ -260,7 +268,12 @@ export function TilingControl({ initialParams }: TilingControlProps) {
                 <Input
                     type="number"
                     value={overlap}
-                    onChange={(e) => setOverlap(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                            setOverlap(Math.max(0, Math.min(0.99, val)));
+                        }
+                    }}
                     min={0}
                     max={0.99}
                     step={0.05}
