@@ -5,7 +5,7 @@ from depthai_nodes.node import ParsingNeuralNetwork, TilesPatcher
 
 from fps_control import FPSController, FPSMonitor
 from params_service import CurrentParamsService
-from qr_scan import QRConfigService, QRScanner
+from qr_scan import QRConfigService, QRDecoder
 from tiling import DynamicTiling, TileGridOverlay, TilingConfigService
 
 TILING_SIZE = (3840, 2160)
@@ -29,14 +29,14 @@ with dai.Pipeline(device) as pipeline:
     camera = pipeline.create(dai.node.Camera).build()
 
     rgb_nn = camera.requestOutput(TILING_SIZE, type=dai.ImgFrame.Type.BGR888i)
-    rgb_preview = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.NV12)
+    rgb_display = camera.requestOutput(OUT_SIZE, type=dai.ImgFrame.Type.BGR888i)
 
     fps_controller = pipeline.create(FPSController).build(
-        nn_video=rgb_nn, preview=rgb_preview
+        nn_frames=rgb_nn, display_frames=rgb_display
     )
 
     dynamic_tiling = pipeline.create(DynamicTiling).build(
-        img_output=fps_controller.nn_video_out,
+        img_output=fps_controller.rgb_nn,
         img_shape=TILING_SIZE,
         nn_shape=nn_archive.getInputSize(),
         resize_mode=dai.ImageManipConfig.ResizeMode.STRETCH,
@@ -47,21 +47,21 @@ with dai.Pipeline(device) as pipeline:
     )
 
     patcher = pipeline.create(TilesPatcher).build(
-        img_frames=fps_controller.nn_video_out,
+        img_frames=fps_controller.rgb_nn,
         nn=nn.out,
         conf_thresh=0.3,
         iou_thresh=0.2,
     )
 
-    scanner = pipeline.create(QRScanner).build(
-        preview=fps_controller.nn_video_out,
-        detections=patcher.out,
+    qr_decoder = pipeline.create(QRDecoder).build(
+        input_frame=fps_controller.rgb_nn,
+        input_detections=patcher.out,
     )
 
     grid_overlay = pipeline.create(TileGridOverlay).build(
-        preview=fps_controller.preview_out,
-        tile_positions=dynamic_tiling.tile_positions,
-        source_size=TILING_SIZE,
+        input_frame=fps_controller.rgb_display,
+        get_tile_positions=dynamic_tiling.get_tile_positions,
+        tile_size=TILING_SIZE,
     )
 
     grid_manip = pipeline.create(dai.node.ImageManip)
@@ -77,25 +77,24 @@ with dai.Pipeline(device) as pipeline:
     )
     grid_manip.out.link(encoder.input)
 
-    fps_monitor = pipeline.create(FPSMonitor).build(input_stream=scanner.out)
+    fps_monitor = pipeline.create(FPSMonitor).build(input_stream=qr_decoder.out)
     fps_monitor.out.link(fps_controller.feedback)
 
     visualizer.addTopic("Video", encoder.out, "images")
-    visualizer.addTopic("Visualizations", scanner.out, "images")
+    visualizer.addTopic("Visualizations", qr_decoder.out, "images")
 
     tiling_service = TilingConfigService(
         dynamic_tiling=dynamic_tiling,
-        grid_visualizer=grid_overlay,
         pipeline=pipeline,
         fps_controller=fps_controller,
     )
     visualizer.registerService(tiling_service.NAME, tiling_service)
 
-    qr_service = QRConfigService(scanner=scanner)
+    qr_service = QRConfigService(qr_decoder=qr_decoder)
     visualizer.registerService(qr_service.NAME, qr_service)
 
     params_service = CurrentParamsService(
-        dynamic_tiling=dynamic_tiling, qr_scanner=scanner
+        dynamic_tiling=dynamic_tiling, qr_decoder=qr_decoder
     )
     visualizer.registerService(params_service.NAME, params_service)
 

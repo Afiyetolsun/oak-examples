@@ -7,7 +7,7 @@ import { CircleLoader } from "./CircleLoader.tsx";
 
 export type CurrentParamsResponse = {
     tiling: TilingParams;
-    scanner: boolean;
+    decoder: boolean;
 };
 
 function App() {
@@ -23,7 +23,7 @@ function App() {
     const onCurrentParams = useCallback((response: CurrentParamsResponse) => {
         console.log("[Init] Returned tiling params:", response);
         setTilingParams(response.tiling);
-        setDecodeEnabled(response.scanner)
+        setDecodeEnabled(response.decoder)
         setParamsLoaded(true);
     }, []);
 

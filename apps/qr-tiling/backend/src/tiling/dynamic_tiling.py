@@ -151,3 +151,6 @@ except Exception as e:
             "global_detection": self._global_detection,
             "grid_matrix": self._grid_matrix,
         }
+
+    def get_tile_positions(self):
+        return self.tile_positions

@@ -1,5 +1,5 @@
 from base_service import BaseService
-from qr_scan.host_qr_scanner import QRScanner
+from qr_scan.qr_decoder import QRDecoder
 from tiling.dynamic_tiling import DynamicTiling
 
 
@@ -10,13 +10,13 @@ class CurrentParamsService(BaseService[None]):
     def __init__(
         self,
         dynamic_tiling: DynamicTiling,
-        qr_scanner: QRScanner,
+        qr_decoder: QRDecoder,
     ):
         self._dynamic_tiling = dynamic_tiling
-        self._scanner = qr_scanner
+        self._decoder = qr_decoder
 
     def handle_typed(self, payload: None = None) -> dict:
         return {
             "tiling": self._dynamic_tiling.current_params,
-            "scanner": self._scanner.decode_enabled,
+            "decoder": self._decoder.decode_enabled,
         }

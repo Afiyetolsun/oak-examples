@@ -5,7 +5,7 @@ from pyzbar.pyzbar import decode as pyzbar_decode
 from depthai_nodes.node import BaseHostNode
 
 
-class QRScanner(BaseHostNode):
+class QRDecoder(BaseHostNode):
     """Decodes QR codes from detected bounding boxes."""
 
     def __init__(self) -> None:
@@ -15,26 +15,26 @@ class QRScanner(BaseHostNode):
 
     def build(
         self,
-        preview: dai.Node.Output,
-        detections: dai.Node.Output,
+        input_frame: dai.Node.Output,
+        input_detections: dai.Node.Output,
         decode_enabled: bool = True,
-    ) -> "QRScanner":
-        self.link_args(preview, detections)
+    ) -> "QRDecoder":
+        self.link_args(input_frame, input_detections)
         self._decode_enabled = decode_enabled
         return self
 
-    def process(self, preview: dai.Buffer, detections: dai.Buffer) -> None:
-        frame = preview.getCvFrame()
-        assert isinstance(detections, dai.ImgDetections)
+    def process(self, input_frame: dai.Buffer, input_detections: dai.Buffer) -> None:
+        frame = input_frame.getCvFrame()
+        assert isinstance(input_detections, dai.ImgDetections)
 
-        for det in detections.detections:
+        for det in input_detections.detections:
             det.labelName = " "
             if self._decode_enabled:
                 bbox = self._denormalize_bbox(frame, det)
                 decoded_text = self._decode_qr(frame, bbox)
                 det.labelName = decoded_text if decoded_text else " "
-        detections.setSequenceNum(preview.getSequenceNum())
-        self.out.send(detections)
+        input_detections.setSequenceNum(input_frame.getSequenceNum())
+        self.out.send(input_detections)
 
     def _decode_qr(self, frame: np.ndarray, bbox: np.ndarray) -> str:
         """Decode QR code in the given bounding box."""

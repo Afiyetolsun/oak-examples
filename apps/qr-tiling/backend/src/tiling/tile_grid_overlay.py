@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 
 import cv2
 import depthai as dai
@@ -12,33 +12,33 @@ class TileGridOverlay(BaseHostNode):
 
     def __init__(self) -> None:
         super().__init__()
-        self._tile_positions: List[Tuple[int, int, int, int]] = []
-        self._source_size: Tuple[int, int] | None = None
+        self._get_tile_positions: Callable[[], List[Tuple[int, int, int, int]]] = (
+            lambda: []
+        )
+        self._tile_size: Tuple[int, int] | None = None
         self._colors: List[Tuple[int, int, int]] = []
+        self._last_tile_count: int = 0
 
     def build(
         self,
-        preview: dai.Node.Output,
-        tile_positions: List[Tuple[int, int, int, int]],
-        source_size: Tuple[int, int] | None = None,
+        input_frame: dai.Node.Output,
+        get_tile_positions: Callable[[], List[Tuple[int, int, int, int]]],
+        tile_size: Tuple[int, int] | None = None,
     ) -> "TileGridOverlay":
-        self.link_args(preview)
-        self._tile_positions = tile_positions
-        self._source_size = source_size
-        self._generate_colors()
+        self.link_args(input_frame)
+        self._get_tile_positions = get_tile_positions
+        self._tile_size = tile_size
+        self._regenerate_colors_if_needed(get_tile_positions())
         return self
 
-    @property
-    def tile_positions(self) -> List[Tuple[int, int, int, int]]:
-        return self._tile_positions
-
-    @tile_positions.setter
-    def tile_positions(self, value: List[Tuple[int, int, int, int]]) -> None:
-        self._tile_positions = value
-        self._generate_colors()
-
-    def _generate_colors(self) -> None:
-        """Generate random colors for tiles."""
+    def _regenerate_colors_if_needed(
+        self, tile_positions: List[Tuple[int, int, int, int]]
+    ) -> None:
+        """Regenerate colors only when tile count changes."""
+        count = len(tile_positions)
+        if count == self._last_tile_count:
+            return
+        self._last_tile_count = count
         np.random.seed(432)
         self._colors = [
             (
@@ -46,29 +46,36 @@ class TileGridOverlay(BaseHostNode):
                 int(np.random.random() * 255),
                 int(np.random.random() * 255),
             )
-            for _ in range(max(len(self._tile_positions), 1))
+            for _ in range(max(count, 1))
         ]
 
-    def process(self, preview: dai.Buffer) -> None:
-        frame = preview.getCvFrame()
-        frame_with_grid = self._draw_grid(frame)
+    def process(self, input_frame: dai.Buffer) -> None:
+        assert isinstance(
+            input_frame, dai.ImgFrame
+        ), f"Expected dai.ImgFrame, got {type(input_frame)}"
+        frame = input_frame.getCvFrame()
+        tile_positions = self._get_tile_positions()
+        self._regenerate_colors_if_needed(tile_positions)
+        frame_with_grid = self._draw_grid(frame, tile_positions)
 
         out_frame = dai.ImgFrame()
         out_frame.setCvFrame(frame_with_grid, dai.ImgFrame.Type.BGR888p)
-        out_frame.setTimestamp(preview.getTimestamp())
-        out_frame.setSequenceNum(preview.getSequenceNum())
-        out_frame.setTimestampDevice(preview.getTimestampDevice())
+        out_frame.setTimestamp(input_frame.getTimestamp())
+        out_frame.setSequenceNum(input_frame.getSequenceNum())
+        out_frame.setTimestampDevice(input_frame.getTimestampDevice())
 
         self.out.send(out_frame)
 
     def _scale_positions(
-        self, frame_size: Tuple[int, int]
+        self,
+        tile_positions: List[Tuple[int, int, int, int]],
+        frame_size: Tuple[int, int],
     ) -> List[Tuple[int, int, int, int]]:
         """Scale tile positions from source size to frame size."""
-        if not self._source_size:
-            return self._tile_positions
+        if not self._tile_size:
+            return tile_positions
 
-        src_w, src_h = self._source_size
+        src_w, src_h = self._tile_size
         dst_w, dst_h = frame_size
 
         scale_x = dst_w / src_w
@@ -81,13 +88,17 @@ class TileGridOverlay(BaseHostNode):
                 int(x2 * scale_x),
                 int(y2 * scale_y),
             )
-            for x1, y1, x2, y2 in self._tile_positions
+            for x1, y1, x2, y2 in tile_positions
         ]
 
-    def _draw_grid(self, frame: np.ndarray) -> np.ndarray:
+    def _draw_grid(
+        self,
+        frame: np.ndarray,
+        tile_positions: List[Tuple[int, int, int, int]],
+    ) -> np.ndarray:
         """Draw tile grid overlay on the frame."""
         frame_h, frame_w = frame.shape[:2]
-        scaled_positions = self._scale_positions((frame_w, frame_h))
+        scaled_positions = self._scale_positions(tile_positions, (frame_w, frame_h))
 
         overlay = frame.copy()
 
@@ -100,7 +111,7 @@ class TileGridOverlay(BaseHostNode):
 
         frame = cv2.addWeighted(overlay, 0.3, frame, 0.7, 0)
 
-        text = f"Tiles: {len(self._tile_positions)}"
+        text = f"Tiles: {len(tile_positions)}"
         cv2.putText(
             frame,
             text,

@@ -1,8 +1,8 @@
-from .host_qr_scanner import QRScanner
+from .qr_decoder import QRDecoder
 from .qr_service import QRConfigService, QRConfigPayload
 
 __all__ = [
-    "QRScanner",
+    "QRDecoder",
     "QRConfigService",
     "QRConfigPayload",
 ]

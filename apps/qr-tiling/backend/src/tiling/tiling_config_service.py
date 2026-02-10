@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 from base_service import BaseService
 from fps_control import FPSController
-from tiling import DynamicTiling, TileGridOverlay
+from tiling import DynamicTiling
 
 
 class TilingConfigPayload(BaseModel):
@@ -26,12 +26,10 @@ class TilingConfigService(BaseService[TilingConfigPayload]):
     def __init__(
         self,
         dynamic_tiling: DynamicTiling,
-        grid_visualizer: TileGridOverlay,
         pipeline: dai.Pipeline,
         fps_controller: FPSController,
     ):
         self._dynamic_tiling = dynamic_tiling
-        self._grid_visualizer = grid_visualizer
         self._pipeline = pipeline
         self._fps_controller = fps_controller
 
@@ -46,8 +44,6 @@ class TilingConfigService(BaseService[TilingConfigPayload]):
             global_detection=payload.global_detection,
             grid_matrix=payload.grid_matrix,
         )
-
-        self._grid_visualizer.tile_positions = self._dynamic_tiling.tile_positions
 
         # Feed-forward: pre-adjust FPS target based on new tile count
         self._adjust_fps_for_new_tiles()
@@ -79,9 +75,6 @@ class TilingConfigService(BaseService[TilingConfigPayload]):
         self._old_tile_count = tile_count
 
     def _estimate_max_fps(self, tile_count: int) -> int | None:
-        if tile_count <= 0:
-            return None
-
         # Estimate safe FPS assuming the NN is the bottleneck.
         # Uses medianMicrosRecent (per-tile NN processing time) from pipeline state.
         try:
@@ -89,8 +82,6 @@ class TilingConfigService(BaseService[TilingConfigPayload]):
             for node_id, ns in pipeline_state.nodeStates.items():
                 if self._pipeline.getNode(node_id).getName() == self.NN_NODE_NAME:
                     nn_tile_us = ns.mainLoopTiming.durationStats.medianMicrosRecent
-                    if nn_tile_us <= 0:
-                        return None
                     est_max_fps = 1_000_000 / (nn_tile_us * tile_count)
                     est_fps_target = int(est_max_fps * self.SAFETY_MARGIN)
                     print(

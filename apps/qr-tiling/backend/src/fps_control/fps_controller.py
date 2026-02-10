@@ -55,15 +55,15 @@ class FPSController(dai.node.ThreadedHostNode):
             msg = node.inputs['target_fps'].get()
             target_fps = msg.getData()[0]
 
-        nn_frame = node.inputs['nn_video'].get()
-        preview_frame = node.inputs['preview'].get()
+        nn_frame = node.inputs['nn_frames'].get()
+        display_frame = node.inputs['display_frames'].get()
 
         frame_budget += target_fps
 
         if frame_budget >= max_fps:
             frame_budget -= max_fps
-            node.outputs['nn_video_out'].send(nn_frame)
-            node.outputs['preview_out'].send(preview_frame)
+            node.outputs['rgb_nn'].send(nn_frame)
+            node.outputs['rgb_display'].send(display_frame)
     """
 
     def __init__(self) -> None:
@@ -89,8 +89,8 @@ class FPSController(dai.node.ThreadedHostNode):
 
     def build(
         self,
-        nn_video: dai.Node.Output,
-        preview: dai.Node.Output,
+        nn_frames: dai.Node.Output,
+        display_frames: dai.Node.Output,
         config: FPSControllerConfig | None = None,
     ) -> "FPSController":
         if config is not None:
@@ -103,8 +103,8 @@ class FPSController(dai.node.ThreadedHostNode):
         self._output_fps = self._config.max_fps
         self._last_stable_fps = self._config.max_fps
 
-        nn_video.link(self._script.inputs["nn_video"])
-        preview.link(self._script.inputs["preview"])
+        nn_frames.link(self._script.inputs["nn_frames"])
+        display_frames.link(self._script.inputs["display_frames"])
         self._fps_out.link(self._script.inputs["target_fps"])
 
         self._script.inputs["target_fps"].setBlocking(False)
@@ -218,12 +218,12 @@ class FPSController(dai.node.ThreadedHostNode):
         self._fps_out.send(buff)
 
     @property
-    def nn_video_out(self) -> dai.Node.Output:
-        return self._script.outputs["nn_video_out"]
+    def rgb_nn(self) -> dai.Node.Output:
+        return self._script.outputs["rgb_nn"]
 
     @property
-    def preview_out(self) -> dai.Node.Output:
-        return self._script.outputs["preview_out"]
+    def rgb_display(self) -> dai.Node.Output:
+        return self._script.outputs["rgb_display"]
 
     @property
     def feedback(self) -> dai.Node.Input:
