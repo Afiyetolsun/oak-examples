@@ -5,14 +5,14 @@ from geometry_msgs.msg import Twist
 import numpy as np
 
 
-class FollowPerson(Node):
+class FollowObject(Node):
     def __init__(self):
-        super().__init__("follow_person")
+        super().__init__("follow_object")
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.ANGULAR_SPEED_COEF = -1.5
         self.LINEAR_SPEED_COEF = 1.0
         self.KEEP_LINEAR_DIST_M = 1.0
-        self.PERSON_MARKER_TEXT = "person"
+        self.OBJECT_MARKER_TEXT = "person"
         self.MAX_ANG_SPEED = 1.0
         self.MIN_ANG_SPEED = 0.05
 
@@ -24,14 +24,14 @@ class FollowPerson(Node):
     def spatian_nn_cb(self, msg: MarkerArray):
         person_marker = Marker()
         for marker in msg.markers:
-            if marker.text == self.PERSON_MARKER_TEXT:
+            if marker.text == self.OBJECT_MARKER_TEXT:
                 person_marker = marker
                 break
 
         cmd_msg = Twist()
 
-        if self.PERSON_MARKER_TEXT not in person_marker.text:
-            print("person not detected")
+        if self.OBJECT_MARKER_TEXT not in person_marker.text:
+            print(f"{self.OBJECT_MARKER_TEXT} not detected")
             cmd_msg.linear.x = 0.0
             cmd_msg.angular.z = (
                 float(np.sign(self.prev_cmd_msg.angular.z)) * self.MAX_ANG_SPEED
@@ -51,7 +51,7 @@ class FollowPerson(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    rclpy.spin(FollowPerson())
+    rclpy.spin(FollowObject())
     rclpy.shutdown()
 
 

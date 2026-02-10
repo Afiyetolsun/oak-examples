@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = "follow_person"
+package_name = "follow_object"
 
 setup(
     name=package_name,
@@ -12,8 +12,8 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="Janez",
-    maintainer_email="janez.cimerman@luxonis.com",
+    maintainer="TODO",
+    maintainer_email="todo@luxonis.com",
     description="TODO: Package description",
     license="TODO: License declaration",
     extras_require={
@@ -23,7 +23,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "follow_person_node = follow_person.follow_person_node:main"
+            "follow_object_node = follow_object.follow_object_node:main"
         ],
     },
 )

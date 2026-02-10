@@ -11,10 +11,10 @@ echo "Starting depthai launch..."
 ros2 launch depthai_filters spatial_bb.launch.py &
 LAUNCH_PID=$!
 
-echo "Starting follow_person node..."
-ros2 run follow_person follow_person_node
+echo "Starting follow_object node..."
+ros2 run follow_object follow_object_node
 
-# If follow_person exits, stop launch as well
-echo "follow_person exited, stopping launch..."
+# If follow_object exits, stop launch as well
+echo "follow_object exited, stopping launch..."
 kill -TERM "$LAUNCH_PID"
 wait "$LAUNCH_PID"
