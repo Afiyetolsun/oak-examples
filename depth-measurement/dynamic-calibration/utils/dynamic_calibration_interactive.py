@@ -323,26 +323,53 @@ with pipeline:
                 display_text_depth = f"Depth: {depth_val:.2f} m"
                 display_text_euc = f"3D Dist: {euclidean_dist:.2f} m"
 
-                # Example of drawing (depends on your OpenCV overlay logic):
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.6
+                thickness = 1
+
+                (w1, h1), _ = cv2.getTextSize(
+                    display_text_depth, font, font_scale, thickness
+                )
+                (w2, h2), _ = cv2.getTextSize(
+                    display_text_euc, font, font_scale, thickness
+                )
+                max_w = max(w1, w2)
+                line_h = max(h1, h2)
+                padding = 4
+                line_gap = 6
+                text_box_alpha = 0.65
+
+                box_x0 = text_pos_1[0] - padding
+                box_y0 = text_pos_1[1] - line_h - padding
+                box_x1 = box_x0 + max_w + 2 * padding
+                box_y1 = box_y0 + (2 * line_h) + line_gap + (2 * padding)
+                text_overlay = masterFrame.copy()
+                cv2.rectangle(
+                    text_overlay, (box_x0, box_y0), (box_x1, box_y1), (0, 0, 0), -1
+                )
+
                 cv2.putText(
-                    masterFrame,
+                    text_overlay,
                     display_text_depth,
                     text_pos_1,
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 255, 0),
-                    1,
+                    font,
+                    font_scale,
+                    (255, 255, 255),
+                    thickness,
                     cv2.LINE_AA,
                 )
                 cv2.putText(
-                    masterFrame,
+                    text_overlay,
                     display_text_euc,
                     text_pos_2,
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (255, 255, 0),
-                    1,
+                    font,
+                    font_scale,
+                    (255, 255, 255),
+                    thickness,
                     cv2.LINE_AA,
+                )
+                masterFrame = cv2.addWeighted(
+                    text_overlay, text_box_alpha, masterFrame, 1 - text_box_alpha, 0
                 )
 
                 # ROI display area (unchanged)
