@@ -9,12 +9,11 @@ class FollowObject(Node):
     def __init__(self):
         super().__init__("follow_object")
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        self.ANGULAR_SPEED_COEF = -1.5
-        self.LINEAR_SPEED_COEF = 1.0
-        self.KEEP_LINEAR_DIST_M = 1.0
-        self.OBJECT_MARKER_TEXT = "person"
-        self.MAX_ANG_SPEED = 1.0
-        self.MIN_ANG_SPEED = 0.05
+        self.ANGULAR_SPEED_COEF = -1.5  # Yaw gain for horizontal target offset.
+        self.LINEAR_SPEED_COEF = 1.0  # Forward speed gain for depth error.
+        self.KEEP_LINEAR_DIST_M = 1.0  # Desired distance to target (m).
+        self.OBJECT_MARKER_TEXT = "person"  # Marker text label to follow.
+        self.MAX_ANG_SPEED = 1.0  # Search rotation speed when target is missing.
 
         self.prev_cmd_msg = Twist()
         self.spatian_nn_sub = self.create_subscription(
