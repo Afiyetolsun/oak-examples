@@ -3,7 +3,7 @@ from pathlib import Path
 import depthai as dai
 from depthai_nodes.node import ParsingNeuralNetwork, TilesPatcher
 
-from fps_control import FPSCalculator, FPSController, FPSMonitor
+from fps_control import FPSController, PipelineHealthMonitor
 from params_service import CurrentParamsService
 from qr_scan import QRConfigService, QRDecoder
 from tiling import DynamicTiling, TileGridOverlay, TilingConfigService
@@ -77,21 +77,18 @@ with dai.Pipeline(device) as pipeline:
     )
     grid_manip.out.link(encoder.input)
 
-    fps_monitor = pipeline.create(FPSMonitor).build(input_stream=qr_decoder.out)
-
-    fps_calculator = pipeline.create(FPSCalculator).build(
-        input_feedback=fps_monitor.out,
+    health_monitor = pipeline.create(PipelineHealthMonitor).build(
         pipeline=pipeline,
         initial_tile_count=dynamic_tiling.tile_count,
     )
-    fps_calculator.out.link(fps_controller.target_fps)
+    health_monitor.out.link(fps_controller.target_fps)
 
     visualizer.addTopic("Video", encoder.out, "images")
     visualizer.addTopic("Visualizations", qr_decoder.out, "images")
 
     tiling_service = TilingConfigService(
         dynamic_tiling=dynamic_tiling,
-        fps_calculator=fps_calculator,
+        health_monitor=health_monitor,
     )
     visualizer.registerService(tiling_service.NAME, tiling_service)
 

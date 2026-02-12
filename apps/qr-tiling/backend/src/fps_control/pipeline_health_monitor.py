@@ -22,9 +22,15 @@ class PipelineHealthConfig:
     # Camera: capture input
     # VideoEncoder: display output encoding
     skip_node_names: tuple = (
-        "Script", "ImageManip",
-        "XLinkOut", "XLinkOutHost", "XLinkIn", "XLinkInHost",
-        "Sync", "Camera", "VideoEncoder",
+        "Script",
+        "ImageManip",
+        "XLinkOut",
+        "XLinkOutHost",
+        "XLinkIn",
+        "XLinkInHost",
+        "Sync",
+        "Camera",
+        "VideoEncoder",
     )
     # BLOCKED-based control (only definitive overload signal)
     blocked_window_size: int = 4  # sliding window of recent polls
@@ -202,10 +208,7 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
                 cur_q = iq.numQueued
 
                 if cur_q > 0 or iq.state == iq.State.BLOCKED:
-                    detail = (
-                        f"{label}(cur={cur_q}, "
-                        f"state={iq.state.name})"
-                    )
+                    detail = f"{label}(cur={cur_q}, " f"state={iq.state.name})"
                     all_queue_details.append(detail)
 
                 if iq.state == iq.State.BLOCKED:
@@ -218,7 +221,9 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
 
         cfg = self._config
         old_fps = self._output_fps
-        queues_summary = " | ".join(all_queue_details) if all_queue_details else "all empty"
+        queues_summary = (
+            " | ".join(all_queue_details) if all_queue_details else "all empty"
+        )
         blocked_info = ", ".join(blocked_nodes) if blocked_nodes else "none"
         window_str = "".join("B" if b else "." for b in self._blocked_history)
 
@@ -283,7 +288,9 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
             self._healthy_count += 1
             self._try_rise(now, old_fps, window_str, queues_summary)
 
-    def _try_rise(self, now: float, old_fps: int, window_str: str, queues_summary: str) -> None:
+    def _try_rise(
+        self, now: float, old_fps: int, window_str: str, queues_summary: str
+    ) -> None:
         cfg = self._config
 
         # Determine effective ceiling
@@ -372,10 +379,7 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
         The ceiling stays at its current value (not lowered to new_fps).
         This prevents locking too low from aggressive drops.
         """
-        if (
-            self._ceiling is not None
-            and self._output_fps >= self._ceiling
-        ):
+        if self._ceiling is not None and self._output_fps >= self._ceiling:
             self._ceiling_locked = True
             self._ceiling_probe_count = 0
 
@@ -423,8 +427,7 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
             # so timing includes wait time, not processing capacity.
             if ns.inputStates:
                 all_waiting = all(
-                    iq.state == iq.State.WAITING
-                    for iq in ns.inputStates.values()
+                    iq.state == iq.State.WAITING for iq in ns.inputStates.values()
                 )
                 if all_waiting:
                     label = f"{node_name}[{node_id}]"
