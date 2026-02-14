@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 
 import depthai as dai
 from depthai_nodes.node import ParsingNeuralNetwork, TilesPatcher
@@ -11,11 +12,14 @@ from tiling import DynamicTiling, TileGridOverlay, TilingConfigService
 TILING_SIZE = (3840, 2160)
 OUT_SIZE = (1920, 1080)
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device()
 
 with dai.Pipeline(device) as pipeline:
-    print("Creating pipeline...")
+    logger.info("Creating pipeline...")
 
     platform = device.getPlatform()
     nn_archive = dai.NNArchive(
@@ -77,18 +81,18 @@ with dai.Pipeline(device) as pipeline:
     )
     grid_manip.out.link(encoder.input)
 
-    health_monitor = pipeline.create(PipelineHealthMonitor).build(
+    pipeline_health_monitor = pipeline.create(PipelineHealthMonitor).build(
         pipeline=pipeline,
         initial_tile_count=dynamic_tiling.tile_count,
     )
-    health_monitor.out.link(fps_controller.target_fps)
+    pipeline_health_monitor.out.link(fps_controller.target_fps)
 
     visualizer.addTopic("Video", encoder.out, "images")
     visualizer.addTopic("Visualizations", qr_decoder.out, "images")
 
     tiling_service = TilingConfigService(
         dynamic_tiling=dynamic_tiling,
-        health_monitor=health_monitor,
+        adjust_fps_from_tile_count=pipeline_health_monitor.adjust_fps_from_tile_count,
     )
     visualizer.registerService(tiling_service.NAME, tiling_service)
 
@@ -100,14 +104,14 @@ with dai.Pipeline(device) as pipeline:
     )
     visualizer.registerService(params_service.NAME, params_service)
 
-    print("Pipeline created.")
-
+    logger.info("Pipeline created. Starting...")
     pipeline.start()
     visualizer.registerPipeline(pipeline)
+    logger.info("Pipeline running!")
 
     while pipeline.isRunning():
         pipeline.processTasks()
         key = visualizer.waitKey(1)
         if key == ord("q"):
-            print("Got q key. Exiting...")
+            logger.info("Got 'q' key. Exiting...")
             break

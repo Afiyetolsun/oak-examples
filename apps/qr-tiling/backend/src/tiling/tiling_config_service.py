@@ -1,7 +1,8 @@
+from collections.abc import Callable
+
 from pydantic import BaseModel, Field
 
 from base_service import BaseService
-from fps_control import PipelineHealthMonitor
 from tiling import DynamicTiling
 
 
@@ -20,10 +21,10 @@ class TilingConfigService(BaseService[TilingConfigPayload]):
     def __init__(
         self,
         dynamic_tiling: DynamicTiling,
-        health_monitor: PipelineHealthMonitor,
+        adjust_fps_from_tile_count: Callable[[int], None],
     ):
         self._dynamic_tiling = dynamic_tiling
-        self._health_monitor = health_monitor
+        self._adjust_fps_from_tile_count = adjust_fps_from_tile_count
         self._old_tile_count = dynamic_tiling.tile_count
 
     def handle_typed(self, payload: TilingConfigPayload) -> dict:
@@ -38,7 +39,7 @@ class TilingConfigService(BaseService[TilingConfigPayload]):
 
         new_tile_count = self._dynamic_tiling.tile_count
         if new_tile_count != self._old_tile_count:
-            self._health_monitor.adjust_fps_from_tile_count(new_tile_count)
+            self._adjust_fps_from_tile_count(new_tile_count)
             self._old_tile_count = new_tile_count
 
         return {"ok": True}
