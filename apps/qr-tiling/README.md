@@ -53,11 +53,17 @@ ______________________________________________________________________
   - UI state synchronized with backend
   - Configuration persists across UI refreshes
 
+- **Adaptive FPS control**
+
+  - Monitors pipeline backpressure (BLOCKED input queues) and adjusts FPS to prevent overload
+  - Estimates safe FPS from node timing data when tile count increases
+  - Gradually ramps FPS back up after tile count decreases
+
 ______________________________________________________________________
 
 ## Architecture
 
-![](media/Qr_pipeline.png)
+![](media/architecture.png)
 
 ______________________________________________________________________
 
@@ -88,6 +94,8 @@ You can upload the oakapp to Luxonis Hub via `oakctl` and then remotely open the
 ______________________________________________________________________
 
 ## Configuration
+
+> **Note:** FPS may drop briefly after increasing tile count (to prevent overload) and will gradually ramp back up after decreasing the tile count.
 
 ### Tiling Parameters
 
