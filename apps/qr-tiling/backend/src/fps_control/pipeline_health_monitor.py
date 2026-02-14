@@ -36,7 +36,8 @@ class PipelineHealthConfig:
     rise_step: int = 1
     healthy_polls_before_rise: int = 5
     ceiling_stable_trial_polls: int = 10
-    post_drop_hold_polls: int = 10
+    post_drop_hold_polls: int = 5
+    ceiling_discovery_delay_polls: int = 15
     fps_safety_margin: float = 0.75
 
 
@@ -113,10 +114,11 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
         self._healthy_count: int = 0
         self._ceiling = FpsCeilingState()
         self._settle_until: float = 0.0
-        self._blocked_inputs_history: deque = deque(
+        self._blocked_inputs_history: deque[bool] = deque(
             maxlen=self._config.blocked_window_size
         )
         self._post_drop_cooldown_left: int = 0
+        self._ceiling_discovery_polls_left: int = 0
         self._old_tile_count: int = 0
         self._lock = threading.Lock()
 
@@ -179,6 +181,7 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
             return
 
         self._ceiling.set(est_fps)
+        self._ceiling_discovery_polls_left = 0
 
         logger.info(
             "TILES_INCREASE %d->%d, est_fps=%d, setting as ceiling",
@@ -200,6 +203,7 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
         )
         self._ceiling.clear()
         self._healthy_count = 0
+        self._ceiling_discovery_polls_left = self._config.ceiling_discovery_delay_polls
 
     def _poll_and_adjust(self) -> None:
         state = self._pipeline.getPipelineState().nodes().detailed()
@@ -229,6 +233,10 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
         if has_blocked:
             self._healthy_count = 0
             self._ceiling.reset_stable()
+            if self._ceiling_discovery_polls_left > 0:
+                self._ceiling_discovery_polls_left = (
+                    self._config.ceiling_discovery_delay_polls
+                )
 
             blocked_window = "".join(
                 "B" if b else "." for b in self._blocked_inputs_history
@@ -258,6 +266,9 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
                 self._post_drop_cooldown_left -= 1
                 return
 
+            if self._ceiling_discovery_polls_left > 0:
+                self._ceiling_discovery_polls_left -= 1
+
             self._healthy_count += 1
             self._try_rise()
 
@@ -266,13 +277,20 @@ class PipelineHealthMonitor(dai.node.ThreadedHostNode):
         self._post_drop_cooldown_left = self._config.post_drop_hold_polls
 
         if not self._ceiling.active:
-            self._ceiling.set(new_fps)
-            logger.info(
-                "fps %d->%d ceiling_discovered=%d",
-                self._output_fps,
-                new_fps,
-                self._ceiling.value,
-            )
+            if self._ceiling_discovery_polls_left > 0:
+                logger.info(
+                    "fps %d->%d ceiling_discovery_delayed",
+                    self._output_fps,
+                    new_fps,
+                )
+            else:
+                self._ceiling.set(new_fps)
+                logger.info(
+                    "fps %d->%d ceiling_discovered=%d",
+                    self._output_fps,
+                    new_fps,
+                    self._ceiling.value,
+                )
         elif self._output_fps >= self._ceiling.value:
             self._ceiling.lower_to(new_fps)
             self._ceiling.lock()
