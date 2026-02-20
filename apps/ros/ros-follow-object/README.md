@@ -70,6 +70,10 @@ to the desired marker text label (for example `"bottle"` or `"car"`), then rebui
 2. Set the topic to `/spatial_bb`.
 3. Optionally add other displays from depthai ROS topics if needed.
 
+## Package deployed on an iRobot Create 3
+
+This package can be adapted to any robot that listens to the `/cmd_vel` topic for motion control. We deployed it on an iRobot Create 3; read more in [this blog post](https://discuss.luxonis.com/blog/6695-running-ros2-onboard-oak4-d).
+
 ## Troubleshooting
 
 If you encounter issues with topic names or data types, verify that your ROS2 distribution matches the one used in the example.
