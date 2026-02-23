@@ -6,6 +6,10 @@ Object selection is done by filtering marker text in code with `self.OBJECT_MARK
 The node computes linear/angular velocity commands from the selected marker position and publishes them to `/cmd_vel`.
 It is based on ROS2 Kilted, but you should be able to subscribe to topics in other distributions such as Humble or Jazzy.
 
+## Demo
+
+![person_follow_demo](media/oak4_person_follow.gif)
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed on your host machine:
