@@ -37,6 +37,21 @@ Afterwards, navigate to desired application as listed below
   </tr>
 </table>
 
+### [🏎️ C++ Examples](cpp/)
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="cpp/camera_stream/media/camera_stream.gif" alt="C++ Camera Stream Demo">
+    </td>
+    <td width="50%" valign="middle" align="center">
+      Explore DepthAIv3 examples implemented in C++, including host builds and OAK app deployment guides. Start with the camera_stream sample to learn how to stream frames from a native depthai-core application.
+      <br><br>
+      <a href="cpp/">🏎️ Explore C++ Examples</a>
+    </td>
+  </tr>
+</table>
+
 ### [🎥 Camera Controls](camera-controls/)
 
 <table>

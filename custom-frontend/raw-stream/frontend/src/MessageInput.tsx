@@ -1,9 +1,9 @@
 import {Flex, Button, Input} from "@luxonis/common-fe-components";
 import {useRef} from "react";
-import {useConnection} from "@luxonis/depthai-viewer-common";
+import {useDaiConnection} from "@luxonis/depthai-viewer-common";
 
 export function MessageInput() {
-    const connection = useConnection();
+    const connection = useDaiConnection();
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleSendMessage = () => {
@@ -12,7 +12,7 @@ export function MessageInput() {
 
             console.log('Sending message:', message);
             // @ts-ignore - We're using an example service here which isn't part of the DAI services enum
-            connection.daiConnection?.postToService('Custom Service', message, (response) => {
+            connection.daiConnection?.postToService('Message Service', message, (response) => {
                 console.log('Received response:', response);
             });
 
