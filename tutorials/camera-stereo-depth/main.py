@@ -23,11 +23,11 @@ with dai.Pipeline(device) as pipeline:
     color_output = color.requestOutput(
         color_resolution, dai.ImgFrame.Type.NV12, fps=args.fps_limit
     )
-    left_output = left.requestFullResolutionOutput(
-        dai.ImgFrame.Type.NV12, fps=args.fps_limit
+    left_output = left.requestOutput(
+        size=(640, 480), type=dai.ImgFrame.Type.NV12, fps=args.fps_limit
     )
-    right_output = right.requestFullResolutionOutput(
-        dai.ImgFrame.Type.NV12, fps=args.fps_limit
+    right_output = right.requestOutput(
+        size=(640, 480), type=dai.ImgFrame.Type.NV12, fps=args.fps_limit
     )
 
     stereo = pipeline.create(dai.node.StereoDepth).build(

@@ -10,7 +10,6 @@ _, args = initialize_argparser()
 visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device(dai.DeviceInfo(args.device)) if args.device else dai.Device()
 
-STEREO_RESOLUTION = (800, 600)
 NN_DIMENSIONS = (512, 288)
 
 if not device.setIrLaserDotProjectorIntensity(1):
@@ -69,15 +68,20 @@ with dai.Pipeline(device) as pipeline:
         left_cam = pipeline.create(dai.node.Camera).build(cam_mono_1)
         right_cam = pipeline.create(dai.node.Camera).build(cam_mono_2)
         stereo = pipeline.create(dai.node.StereoDepth).build(
-            left=left_cam.requestFullResolutionOutput(dai.ImgFrame.Type.NV12),
-            right=right_cam.requestFullResolutionOutput(dai.ImgFrame.Type.NV12),
+            left=left_cam.requestOutput(size=(640, 480), type=dai.ImgFrame.Type.NV12),
+            right=right_cam.requestOutput(size=(640, 480), type=dai.ImgFrame.Type.NV12),
             presetMode=dai.node.StereoDepth.PresetMode.DEFAULT,
         )
-        stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
-        if platform == dai.Platform.RVC2:
-            stereo.setOutputSize(*STEREO_RESOLUTION)
+        cam_out = cameraNode.requestOutput((640, 480), type=dai.ImgFrame.Type.NV12)
+        align = pipeline.create(dai.node.ImageAlign)
 
-        coloredDepth = pipeline.create(ApplyDepthColormap).build(stereo.disparity)
+        if platform == dai.Platform.RVC4:
+            stereo.depth.link(align.input)
+            cam_out.link(align.inputAlignTo)
+        else:
+            cam_out.link(stereo.inputAlignTo)
+
+        coloredDepth = pipeline.create(ApplyDepthColormap).build(align.outputAligned)
         coloredDepth.setColormap(cv2.COLORMAP_JET)
         visualizer.addTopic("Depth", coloredDepth.out)
 
