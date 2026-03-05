@@ -8,3 +8,4 @@ open3d~=0.18
 scipy==1.11.4
 # onnxruntime-gpu # if you want to use CUDAExecutionProvider
 requests
+tqdm
