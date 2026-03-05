@@ -12,7 +12,7 @@ export function ClickCatcher({
   debug = false,
   allowedPanelTitle, 
 }: {
-  containerRef: React.RefObject<HTMLElement>;
+  containerRef: React.RefObject<HTMLElement | null>;
   frameWidth?: number;
   frameHeight?: number;
   serviceName?: string;

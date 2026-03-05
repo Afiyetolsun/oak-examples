@@ -1,5 +1,5 @@
 // src/MeasurementMethodSelector.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { css } from "../styled-system/css/css.mjs";
 import { useDaiConnection } from "@luxonis/depthai-viewer-common";
 
@@ -22,14 +22,7 @@ const DESCRIPTIONS: Record<MeasurementMethod, string[]> = {
 
 export function MeasurementMethodSelector() {
   const connection = useDaiConnection();
-  const [method, setMethod] = useState<MeasurementMethod>(() => {
-    return (localStorage.getItem("measurement-method") as MeasurementMethod) || "obb";
-  });
-
-  // Persist locally so it sticks across reloads
-  useEffect(() => {
-    localStorage.setItem("measurement-method", method);
-  }, [method]);
+  const [method, setMethod] = useState<MeasurementMethod>("obb");
 
   const sendToBackend = (next: MeasurementMethod) => {
     (connection as any)?.daiConnection?.postToService(

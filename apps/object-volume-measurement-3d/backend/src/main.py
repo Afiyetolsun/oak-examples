@@ -30,11 +30,11 @@ device.setIrFloodLightIntensity(1)
 
 frame_type = dai.ImgFrame.Type.BGR888i
 text_features = extract_text_embeddings(
-    class_names=CLASS_NAMES, max_num_classes=MAX_NUM_CLASSES, model_name="yoloe"
+    class_names=CLASS_NAMES, max_num_classes=MAX_NUM_CLASSES
 )
 
 if args.fps_limit is None:
-    args.fps_limit = 5
+    args.fps_limit = 10
     print(
         f"\nFPS limit set to {args.fps_limit} for {platform} platform. If you want to set a custom FPS limit, use the --fps_limit flag.\n"
     )
@@ -147,7 +147,6 @@ with dai.Pipeline(device) as pipeline:
         text_features = extract_text_embeddings(
             class_names=CLASS_NAMES,
             max_num_classes=MAX_NUM_CLASSES,
-            model_name="yoloe",
         )
         inputNNData = dai.NNData()
         inputNNData.addTensor(
@@ -212,10 +211,10 @@ with dai.Pipeline(device) as pipeline:
     visualizer.registerService("Measurement Method Service", measurement_method_service)
 
     visualizer.addTopic("Video", cam_out, "images")
-    visualizer.addTopic("Detections", annotation_node.out_ann)
+    visualizer.addTopic("Detections", annotation_node.out_ann, "images")
     visualizer.addTopic("Pointclouds", rgbd_seg.pcl, "point_clouds")
-    visualizer.addTopic("Measurement Overlay", measurement_node.out_ann)
-    visualizer.addTopic("Plane Status", measurement_node.out_plane_status)
+    visualizer.addTopic("Measurement Overlay", measurement_node.out_ann, "images")
+    visualizer.addTopic("Plane Status", measurement_node.out_plane_status, "images")
 
     print("Pipeline created.")
 
