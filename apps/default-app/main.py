@@ -73,15 +73,15 @@ with dai.Pipeline(device) as pipeline:
             presetMode=dai.node.StereoDepth.PresetMode.DEFAULT,
         )
         cam_out = cameraNode.requestOutput((640, 480), type=dai.ImgFrame.Type.NV12)
-        align = pipeline.create(dai.node.ImageAlign)
 
         if platform == dai.Platform.RVC4:
+            align = pipeline.create(dai.node.ImageAlign)
             stereo.depth.link(align.input)
             cam_out.link(align.inputAlignTo)
+            coloredDepth = pipeline.create(ApplyDepthColormap).build(align.outputAligned)
         else:
             cam_out.link(stereo.inputAlignTo)
-
-        coloredDepth = pipeline.create(ApplyDepthColormap).build(align.outputAligned)
+            coloredDepth = pipeline.create(ApplyDepthColormap).build(stereo.depth)
         coloredDepth.setColormap(cv2.COLORMAP_JET)
         visualizer.addTopic("Depth", coloredDepth.out)
 
