@@ -34,7 +34,7 @@ text_features = extract_text_embeddings(
 )
 
 if args.fps_limit is None:
-    args.fps_limit = 10
+    args.fps_limit = 8
     print(
         f"\nFPS limit set to {args.fps_limit} for {platform} platform. If you want to set a custom FPS limit, use the --fps_limit flag.\n"
     )
