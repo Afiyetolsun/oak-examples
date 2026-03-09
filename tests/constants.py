@@ -3,6 +3,15 @@ KNOWN_FAILING = {
         "reason": "RVC4 only app",
         "rules": {"and": [{"platform": ["rvc2"]}]},
     },
+    "apps/object-volume-measurement-3d": {
+        "reason": "Not supported for peripheral; RVC4 only app",
+        "rules": {
+            "and": [
+                {"mode": ["peripheral"]},
+                {"platform": ["rvc2"]},
+            ],
+        },
+    },
     "apps/people-demographics-and-sentiment-analysis": {
         "reason": "Not supported for peripheral; RVC4 only app",
         "rules": {
