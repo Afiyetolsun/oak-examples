@@ -81,7 +81,9 @@ with dai.Pipeline(device) as pipeline:
             align = pipeline.create(dai.node.ImageAlign)
             stereo.depth.link(align.input)
             cam_out.link(align.inputAlignTo)
-            coloredDepth = pipeline.create(ApplyDepthColormap).build(align.outputAligned)
+            coloredDepth = pipeline.create(ApplyDepthColormap).build(
+                align.outputAligned
+            )
         else:
             stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
             stereo.setOutputSize(800, 600)
