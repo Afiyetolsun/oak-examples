@@ -11,6 +11,16 @@ It runs **YOLOE** on the DepthAI backend, and exposes controls in the UI for:
 
 ![](media/data_collection_app_demo.gif)
 
+## Architecture
+
+### High-level
+
+![](media/high-level-diagram.png)
+
+### In-depth
+
+![](media/in-depth-diagram.png)
+
 ## Features
 
 - **Class control**

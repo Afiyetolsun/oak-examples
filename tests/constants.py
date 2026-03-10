@@ -3,6 +3,15 @@ KNOWN_FAILING = {
         "reason": "RVC4 only app",
         "rules": {"and": [{"platform": ["rvc2"]}]},
     },
+    "apps/object-volume-measurement-3d": {
+        "reason": "Not supported for peripheral; RVC4 only app",
+        "rules": {
+            "and": [
+                {"mode": ["peripheral"]},
+                {"platform": ["rvc2"]},
+            ],
+        },
+    },
     "apps/people-demographics-and-sentiment-analysis": {
         "reason": "Not supported for peripheral; RVC4 only app",
         "rules": {
@@ -22,6 +31,15 @@ KNOWN_FAILING = {
         },
     },
     "apps/dino-tracking": {
+        "reason": "Not supported for peripheral; RVC4 only app",
+        "rules": {
+            "and": [
+                {"mode": ["peripheral"]},
+                {"platform": ["rvc2"]},
+            ],
+        },
+    },
+    "apps/qr-tiling": {
         "reason": "Not supported for peripheral; RVC4 only app",
         "rules": {
             "and": [
@@ -93,8 +111,7 @@ KNOWN_FAILING = {
     },
     "integrations/roboflow-workflow": {
         "reason": "Can't run without arguments Roboflow arguments",
-        "mode": "all",
-        "platform": "all",
+        "rules": {"and": [{"platform": "all"}]},
     },
     "neural-networks/speech-recognition/whisper-tiny-en": {
         "reason": "Complex example, works only on RVC4",
@@ -115,6 +132,14 @@ KNOWN_FAILING = {
     "neural-networks/depth-estimation/foundation-stereo": {
         "reason": "Requires a lot of host compute to run. No matching distribution found for onnxruntime-gpu>=1.19.0 for MacOS",
         "rules": {"or": [{"mode": ["standalone"]}, {"os": ["mac"]}]},
+    },
+    "neural-networks/depth-estimation/neural-depth": {
+        "reason": "Model only available for RVC4",
+        "rules": {"and": [{"platform": ["rvc2"]}]},
+    },
+    "neural-networks/depth-estimation/neural-depth/host_eval": {
+        "reason": "Validation script, not an actual example",
+        "rules": {"and": [{"platform": "all"}]},
     },
     "integrations/hub-snaps-events": {
         "reason": "Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method",
