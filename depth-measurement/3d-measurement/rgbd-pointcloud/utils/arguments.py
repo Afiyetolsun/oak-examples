@@ -24,6 +24,23 @@ def initialize_argparser():
         action="store_true",
     )
 
+    parser.add_argument(
+        "--fps",
+        help="Camera frame rate. Lower it to reduce network bandwidth.",
+        type=float,
+        default=10.0,
+    )
+
+    parser.add_argument(
+        "--size",
+        help="Output resolution as WxH (e.g. 320x200). Lower to reduce bandwidth.",
+        type=str,
+        default="640x400",
+    )
+
     args = parser.parse_args()
+
+    w, h = (int(v) for v in args.size.lower().split("x"))
+    args.size = (w, h)
 
     return parser, args

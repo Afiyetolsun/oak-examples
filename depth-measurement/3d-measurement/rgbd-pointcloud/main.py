@@ -3,7 +3,8 @@ from utils.arguments import initialize_argparser
 
 _, args = initialize_argparser()
 
-IMG_SHAPE = (640, 400)
+IMG_SHAPE = args.size
+FPS = args.fps
 
 visualizer = dai.RemoteConnection(httpPort=8082)
 device = dai.Device(dai.DeviceInfo(args.device)) if args.device else dai.Device()
@@ -18,8 +19,8 @@ with dai.Pipeline(device) as pipeline:
     left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
-    left_out = left.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.NV12)
-    right_out = right.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.NV12)
+    left_out = left.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.NV12, fps=FPS)
+    right_out = right.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.NV12, fps=FPS)
 
     stereo = pipeline.create(dai.node.StereoDepth).build(
         left=left_out,
@@ -35,7 +36,7 @@ with dai.Pipeline(device) as pipeline:
     else:
         cam_node = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
 
-    cam_out = cam_node.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.RGB888i)
+    cam_out = cam_node.requestOutput(IMG_SHAPE, type=dai.ImgFrame.Type.RGB888i, fps=FPS)
     cam_out.link(rgbd.inColor)
 
     if platform == dai.Platform.RVC4:
