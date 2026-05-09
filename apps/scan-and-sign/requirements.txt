@@ -1,0 +1,6 @@
+depthai==3.6.1
+numpy>=1.22,<2
+fastapi>=0.110
+uvicorn[standard]>=0.27
+open3d>=0.18,<0.20
+requests>=2.31

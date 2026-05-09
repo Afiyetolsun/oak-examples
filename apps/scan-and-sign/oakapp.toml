@@ -1,0 +1,41 @@
+identifier = "com.example.apps.scan-and-sign"
+app_version = "0.2.0"
+
+prepare_container = [
+    { type = "RUN", command = "apt-get update" },
+    { type = "RUN", command = "apt-get install -y python3-pip netcat-openbsd libgl1 libgomp1 libusb-1.0-0" },
+    { type = "COPY", source = "requirements.txt", target = "requirements.txt" },
+    { type = "RUN", command = "pip3 install -r /app/requirements.txt --break-system-packages" },
+]
+
+prepare_build_container = []
+
+build_steps = []
+
+# Runtime config is read from env vars by main.py. Push them with
+#   oakctl app config set <app-id> --env KEY=VALUE [--restart]
+# Variables:
+#   BACKEND_URL            (e.g. https://proof-of-reality-landing.vercel.app)
+#   CAMERA_SHARED_SECRET   (preferred — pairs with backend's CAMERA_SHARED_SECRET)
+#   IOS_SHARED_SECRET      (legacy fallback — used if CAMERA_SHARED_SECRET absent)
+#   MODE                   (0=roomPlan, 1=objectCapture, 2=spatial; default 1)
+#   GOTEE_HOST/GOTEE_PORT  (default 10.0.0.1:4000 → USB Armory bridge)
+#   DEVICE_BUNDLE_ID       (default io.luxonis.scan-and-sign)
+#
+# Optional fallback: /data/scan-and-sign/config.env (KEY=VALUE per line) is
+# sourced if present, useful for one-shot provisioning across devices.
+entrypoint = [
+    "bash", "-c",
+    """
+    set -e
+    if [ -f /data/scan-and-sign/config.env ]; then
+        set -a
+        . /data/scan-and-sign/config.env
+        set +a
+    fi
+    : "${GOTEE_HOST:=$(hostname -I | awk '{print $1}')}"
+    export GOTEE_HOST
+    echo "[boot] backend=${BACKEND_URL:-<disabled>} gotee=${GOTEE_HOST}:${GOTEE_PORT:-4000} mode=${MODE:-1}"
+    exec python3 -u /app/main.py --gotee-host "$GOTEE_HOST"
+    """,
+]

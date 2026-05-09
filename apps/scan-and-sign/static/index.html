@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scan &amp; Sign</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; display: grid;
+         grid-template-columns: 380px 1fr; height: 100vh; }
+  aside { padding: 16px; border-right: 1px solid #8884; overflow: auto; }
+  main { display: flex; flex-direction: column; }
+  iframe { flex: 1; border: 0; }
+  h1 { font-size: 16px; margin: 0 0 12px; }
+  button { font-size: 15px; padding: 10px 14px; margin-right: 8px; cursor: pointer;
+           border-radius: 6px; border: 1px solid #8886; background: #0001; }
+  button.rec { background: #c33; color: white; border-color: #911; }
+  button.stop { background: #2a2; color: white; border-color: #181; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+  .pill { padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #8884; }
+  .pill.live { background: #c33; color: white; }
+  .pill.ok { background: #1a7; color: white; }
+  .pill.bad { background: #c33; color: white; }
+  .pill.warn { background: #c80; color: white; }
+  .scan { border: 1px solid #8884; border-radius: 8px; padding: 8px 10px;
+          margin: 8px 0; font-size: 13px; }
+  .scan code { font-size: 11px; word-break: break-all; }
+  .mac { color: #2a2; }
+  .err { color: #c33; }
+  .meta { color: #888; font-size: 11px; margin-top: 4px; }
+  .mint { background: #1a710; padding: 6px 8px; border-radius: 6px; margin-top: 6px;
+          border: 1px solid #1a740; font-size: 12px; }
+  .mint a { color: inherit; }
+  a { color: inherit; }
+  hr { border: 0; border-top: 1px solid #8884; margin: 16px 0; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Scan &amp; Sign</h1>
+  <div class="row">
+    <span class="pill" id="token">token: ?</span>
+    <span class="pill" id="backend">backend: ?</span>
+  </div>
+  <div class="row">
+    <button id="start" class="rec">Start record</button>
+    <button id="stop" class="stop" disabled>Stop &amp; mint</button>
+  </div>
+  <div class="row">
+    <span class="pill" id="state">idle</span>
+    <span id="elapsed"></span>
+    <span id="frames"></span>
+  </div>
+  <div class="row">
+    <a id="vizlink" href="#" target="_blank" rel="noopener">Open live preview &#8599;</a>
+  </div>
+  <hr>
+  <div id="scans"></div>
+</aside>
+<main id="vizmain"></main>
+<script>
+const $ = (id) => document.getElementById(id);
+
+function vizUrlFromConfig(c) {
+  if (c && c.viz_url) return c.viz_url;
+  const port = (c && c.viz_port) || 8082;
+  return `${location.protocol}//${location.hostname}:${port}/`;
+}
+
+(async () => {
+  let url = `${location.protocol}//${location.hostname}:8082/`;
+  try {
+    const r = await fetch('/config');
+    url = vizUrlFromConfig(await r.json());
+  } catch {}
+  $('vizlink').href = url;
+
+  const sameOrigin = url.startsWith(location.protocol);
+  if (sameOrigin) {
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.cssText = 'flex:1;border:0;width:100%;height:100%';
+    $('vizmain').appendChild(iframe);
+  } else {
+    $('vizmain').innerHTML =
+      `<div style="margin:auto;text-align:center;color:#888;padding:40px;font-size:14px;line-height:1.5">
+         Live preview is on a different origin (${url}).<br>
+         Open it in a new tab using the link in the sidebar.
+       </div>`;
+    $('vizmain').style.display = 'flex';
+  }
+})();
+
+async function refreshState() {
+  try {
+    const r = await fetch('/record/state');
+    const s = await r.json();
+    $('start').disabled = s.recording;
+    $('stop').disabled = !s.recording;
+    $('state').textContent = s.recording ? `recording ${s.scan_id}` : 'idle';
+    $('state').classList.toggle('live', s.recording);
+    $('elapsed').textContent = s.recording ? `${s.elapsed_s}s` : '';
+    $('frames').textContent = s.recording ? `${s.frames_integrated} frames` : '';
+  } catch {}
+}
+
+async function refreshHealth() {
+  try {
+    const r = await fetch('/healthz');
+    const h = await r.json();
+    const t = $('token');
+    t.textContent = `token: ${h.token.connected ? 'connected' : 'disconnected'}`;
+    t.className = `pill ${h.token.connected ? 'ok' : 'bad'}`;
+    t.title = h.token.msg;
+
+    const b = $('backend');
+    if (h.backend.url === null) {
+      b.textContent = 'backend: disabled';
+      b.className = 'pill warn';
+    } else {
+      b.textContent = `backend: ${h.backend.ok ? 'ok' : 'down'}`;
+      b.className = `pill ${h.backend.ok ? 'ok' : 'bad'}`;
+    }
+    b.title = h.backend.msg;
+  } catch {}
+}
+
+function explorerLink(txHash) {
+  return `https://sepolia.basescan.org/tx/${txHash}`;
+}
+
+function ensLink(name) {
+  return `https://sepolia.app.ens.domains/${name}`;
+}
+
+function renderMint(m) {
+  if (!m) return '';
+  const tx = m.txHash ? `<a href="${explorerLink(m.txHash)}" target="_blank">tx ${m.txHash.slice(0,10)}…</a>` : '';
+  const ens = m.ensName ? ` · <a href="${ensLink(m.ensName)}" target="_blank">${m.ensName}</a>` : '';
+  const tok = m.tokenId ? ` · token #${m.tokenId}` : '';
+  return `<div class="mint">${tx}${tok}${ens}</div>`;
+}
+
+function renderBackendErr(b) {
+  if (!b) return '';
+  if (b.error) return `<div class="err meta">backend: ${b.error}</div>`;
+  if (b.nonce_error) return `<div class="err meta">nonce: ${b.nonce_error}</div>`;
+  return '';
+}
+
+async function refreshScans() {
+  const r = await fetch('/scans');
+  const items = await r.json();
+  const html = items.map(s => {
+    const g = s.gotee || {};
+    const macHtml = g.mac
+      ? `<span class="mac">mac ${g.mac.slice(0,16)}…</span>`
+      : g.error
+        ? `<span class="err">sign failed: ${g.error}</span>`
+        : `<span class="err">unsigned</span>`;
+    const frames = s.frames_integrated ?? s.frame_count ?? '?';
+    const bundleHash = s.bundle_hash ? `<div class="meta"><code>bundle ${s.bundle_hash.slice(0,18)}…</code></div>` : '';
+    return `<div class="scan">
+      <div><strong>${s.scan_id}</strong> &nbsp; ${macHtml}</div>
+      <div class="meta">
+        ${(s.point_count||0).toLocaleString()} pts ·
+        ${frames} frames ·
+        ${s.duration_s}s
+        ${g.device_id ? '· dev '+g.device_id : ''}
+      </div>
+      <div class="meta">
+        <code>sha256 ${s.ply_sha256}</code>
+      </div>
+      ${bundleHash}
+      ${renderMint(s.mint)}
+      ${renderBackendErr(s.backend)}
+      <div class="meta">
+        <a href="/scans/${s.scan_id}.ply" download>PLY</a> ·
+        <a href="/scans/${s.scan_id}.json" target="_blank">envelope</a> ·
+        <a href="/scans/${s.scan_id}.bundle.json" target="_blank">bundle</a>
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:#888;font-size:13px">no scans yet</div>';
+  $('scans').innerHTML = html;
+}
+
+$('start').onclick = async () => {
+  $('start').disabled = true;
+  await fetch('/record/start', { method: 'POST' });
+  refreshState();
+};
+$('stop').onclick = async () => {
+  $('stop').disabled = true;
+  $('stop').textContent = 'minting…';
+  try { await fetch('/record/stop', { method: 'POST' }); } catch {}
+  $('stop').textContent = 'Stop & mint';
+  refreshState();
+  refreshScans();
+};
+
+setInterval(refreshState, 500);
+setInterval(refreshHealth, 2500);
+setInterval(refreshScans, 3000);
+refreshState();
+refreshHealth();
+refreshScans();
+</script>
+</body>
+</html>
